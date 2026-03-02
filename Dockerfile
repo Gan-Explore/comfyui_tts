@@ -73,15 +73,16 @@ RUN pip install -r requirements.txt
 RUN git clone https://github.com/flybirdxx/ComfyUI-Qwen-TTS.git custom_nodes/ComfyUI-Qwen-TTS
 
 # -------------------------
-# Install OpenVoice (patched)
+# Install OpenVoice (cleaned)
 # -------------------------
 WORKDIR /workspace
 RUN git clone https://github.com/myshell-ai/OpenVoice.git
 
 WORKDIR /workspace/OpenVoice
 
-# Remove outdated PyAV pin (prevents Cython build failure)
-RUN sed -i 's/av==10.*/av/g' requirements.txt
+# Remove problematic dependencies
+RUN sed -i '/av/d' requirements.txt
+RUN sed -i '/faster-whisper/d' requirements.txt
 
 RUN pip install --no-cache-dir -r requirements.txt
 
