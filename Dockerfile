@@ -8,11 +8,19 @@ RUN apt-get update && apt-get install -y \
     curl \
     ffmpeg \
     sox \
+    pkg-config \
     build-essential \
     python3.10 \
     python3.10-venv \
     python3.10-dev \
     python3-pip \
+    libavcodec-dev \
+    libavformat-dev \
+    libavdevice-dev \
+    libavfilter-dev \
+    libswscale-dev \
+    libswresample-dev \
+    libavutil-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
