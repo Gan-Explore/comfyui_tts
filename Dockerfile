@@ -72,6 +72,7 @@ RUN git clone https://github.com/flybirdxx/ComfyUI-Qwen-TTS.git custom_nodes/Com
 
 # Install OpenVoice
 WORKDIR /workspace
+RUN pip install --no-cache-dir av==10.0.0 --only-binary=:all:
 RUN git clone https://github.com/myshell-ai/OpenVoice.git
 WORKDIR /workspace/OpenVoice
 RUN pip install -r requirements.txt
