@@ -70,6 +70,11 @@ ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
 EXPOSE 8188
 EXPOSE 8888
 
+COPY startup.sh /startup.sh
+RUN chmod +x /startup.sh
+
+CMD ["/startup.sh"]
+
 CMD bash -c "\
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --IdentityProvider.token='' & \
 cd /workspace/runpod-slim/ComfyUI && \
