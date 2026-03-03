@@ -30,7 +30,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 
 WORKDIR /workspace
 
-# Clean venv
+# Clean virtual environment
 RUN python -m venv /opt/comfy_env
 ENV PATH="/opt/comfy_env/bin:$PATH"
 
@@ -39,7 +39,7 @@ RUN pip install --upgrade pip setuptools wheel
 # Torch
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# Core deps
+# Core dependencies
 RUN pip install \
     transformers==4.40.2 \
     tokenizers==0.19.1 \
@@ -58,11 +58,6 @@ RUN pip install \
     soundfile \
     librosa \
     av
-
-# ---- IMPORTANT ----
-# Install ComfyUI requirements ONCE
-COPY ComfyUI_requirements.txt /tmp/comfy_requirements.txt
-RUN pip install -r /tmp/comfy_requirements.txt
 
 ENV HF_HOME=/workspace/models/huggingface_cache
 ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
