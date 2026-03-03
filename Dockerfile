@@ -34,7 +34,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 WORKDIR /workspace
 
 # -------------------------------------------------
-# Clean Virtual Environment
+# Virtual Environment
 # -------------------------------------------------
 RUN python -m venv /opt/comfy_env
 ENV PATH="/opt/comfy_env/bin:$PATH"
@@ -42,7 +42,7 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 RUN pip install --upgrade pip setuptools wheel
 
 # -------------------------------------------------
-# PyTorch CUDA 12.4
+# PyTorch (CUDA 12.4)
 # -------------------------------------------------
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
@@ -57,6 +57,8 @@ RUN pip install \
     sentencepiece \
     safetensors \
     sqlalchemy \
+    alembic \
+    aiohttp \
     jupyterlab \
     ipykernel \
     matplotlib \
@@ -67,7 +69,13 @@ RUN pip install \
     av
 
 # -------------------------------------------------
-# HuggingFace Cache (Persistent)
+# Install ComfyUI requirements DURING BUILD
+# -------------------------------------------------
+WORKDIR /workspace/runpod-slim/ComfyUI
+RUN pip install --no-cache-dir -r requirements.txt
+
+# -------------------------------------------------
+# HuggingFace Cache
 # -------------------------------------------------
 ENV HF_HOME=/workspace/models/huggingface_cache
 ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
@@ -76,15 +84,11 @@ EXPOSE 8188
 EXPOSE 8888
 
 # -------------------------------------------------
-# Startup (robust)
+# Startup (NO runtime pip installs)
 # -------------------------------------------------
 CMD bash -c "\
-echo 'Installing ComfyUI requirements...' && \
-cd /workspace/runpod-slim/ComfyUI && \
-pip install -r requirements.txt && \
 echo 'Starting Jupyter...' && \
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' & \
 echo 'Starting ComfyUI...' && \
-cd /workspace/runpod-slim/ComfyUI && \
 exec python main.py --listen 0.0.0.0 --port 8188 \
 "
