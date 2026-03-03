@@ -47,7 +47,7 @@ RUN pip install --upgrade pip setuptools wheel
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # -------------------------------------------------
-# Core Dependencies (Locked)
+# Core Dependencies
 # -------------------------------------------------
 RUN pip install \
     transformers==4.40.2 \
@@ -69,12 +69,6 @@ RUN pip install \
     av
 
 # -------------------------------------------------
-# Install ComfyUI requirements DURING BUILD
-# -------------------------------------------------
-WORKDIR /workspace/runpod-slim/ComfyUI
-RUN pip install --no-cache-dir -r requirements.txt
-
-# -------------------------------------------------
 # HuggingFace Cache
 # -------------------------------------------------
 ENV HF_HOME=/workspace/models/huggingface_cache
@@ -84,11 +78,12 @@ EXPOSE 8188
 EXPOSE 8888
 
 # -------------------------------------------------
-# Startup (NO runtime pip installs)
+# Startup (NO PIP INSTALLS)
 # -------------------------------------------------
 CMD bash -c "\
 echo 'Starting Jupyter...' && \
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' & \
 echo 'Starting ComfyUI...' && \
+cd /workspace/runpod-slim/ComfyUI && \
 exec python main.py --listen 0.0.0.0 --port 8188 \
 "
