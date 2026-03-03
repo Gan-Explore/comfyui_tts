@@ -1,8 +1,8 @@
 #!/bin/bash
 
-echo "--------------------------------------"
+echo "---------------------------------------"
 echo "ComfyUI TTS Environment Booting"
-echo "--------------------------------------"
+echo "---------------------------------------"
 
 COMFY_PATH="/workspace/runpod-slim/ComfyUI"
 PYTHON_BIN="/opt/comfy_env/bin/python"
