@@ -34,7 +34,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 WORKDIR /workspace
 
 # -------------------------------------------------
-# Create clean virtual environment
+# Clean Virtual Environment
 # -------------------------------------------------
 RUN python -m venv /opt/comfy_env
 ENV PATH="/opt/comfy_env/bin:$PATH"
@@ -67,7 +67,7 @@ RUN pip install \
     av
 
 # -------------------------------------------------
-# HuggingFace cache (persistent)
+# HuggingFace Cache (Persistent)
 # -------------------------------------------------
 ENV HF_HOME=/workspace/models/huggingface_cache
 ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
@@ -75,6 +75,9 @@ ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
 EXPOSE 8188
 EXPOSE 8888
 
+# -------------------------------------------------
+# Startup (robust)
+# -------------------------------------------------
 CMD bash -c "\
 echo 'Installing ComfyUI requirements...' && \
 cd /workspace/runpod-slim/ComfyUI && \
@@ -82,5 +85,6 @@ pip install -r requirements.txt && \
 echo 'Starting Jupyter...' && \
 jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' & \
 echo 'Starting ComfyUI...' && \
-python main.py --listen 0.0.0.0 --port 8188 \
+cd /workspace/runpod-slim/ComfyUI && \
+exec python main.py --listen 0.0.0.0 --port 8188 \
 "
