@@ -2,9 +2,6 @@ FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# -------------------------------------------------
-# System Dependencies
-# -------------------------------------------------
 RUN apt-get update && apt-get install -y \
     git \
     wget \
@@ -33,22 +30,16 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 
 WORKDIR /workspace
 
-# -------------------------------------------------
-# Virtual Environment
-# -------------------------------------------------
+# Clean venv
 RUN python -m venv /opt/comfy_env
 ENV PATH="/opt/comfy_env/bin:$PATH"
 
 RUN pip install --upgrade pip setuptools wheel
 
-# -------------------------------------------------
-# PyTorch (CUDA 12.4)
-# -------------------------------------------------
+# Torch
 RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
-# -------------------------------------------------
-# Core Dependencies
-# -------------------------------------------------
+# Core deps
 RUN pip install \
     transformers==4.40.2 \
     tokenizers==0.19.1 \
@@ -68,22 +59,19 @@ RUN pip install \
     librosa \
     av
 
-# -------------------------------------------------
-# HuggingFace Cache
-# -------------------------------------------------
+# ---- IMPORTANT ----
+# Install ComfyUI requirements ONCE
+COPY ComfyUI_requirements.txt /tmp/comfy_requirements.txt
+RUN pip install -r /tmp/comfy_requirements.txt
+
 ENV HF_HOME=/workspace/models/huggingface_cache
 ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
 
 EXPOSE 8188
 EXPOSE 8888
 
-# -------------------------------------------------
-# Startup (NO PIP INSTALLS)
-# -------------------------------------------------
 CMD bash -c "\
-echo 'Starting Jupyter...' && \
-jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' & \
-echo 'Starting ComfyUI...' && \
+jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --IdentityProvider.token='' & \
 cd /workspace/runpod-slim/ComfyUI && \
 exec python main.py --listen 0.0.0.0 --port 8188 \
 "
