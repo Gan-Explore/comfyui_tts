@@ -8,9 +8,9 @@ CUSTOM="$BASE/custom_nodes"
 CACHE="$BASE/model_cache"
 PYTHON="/opt/comfy_env/bin/python"
 
-echo "========================================"
+echo "========================================="
 echo "AI CREATION STACK BOOT"
-echo "========================================"
+echo "========================================="
 
 # -------------------------------------------------
 # Wait for internet
