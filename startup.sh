@@ -5,7 +5,6 @@ set -e
 BASE="/workspace/runpod-slim"
 COMFY="$BASE/ComfyUI"
 CUSTOM="$BASE/custom_nodes"
-TTS="$BASE/tts"
 CACHE="$BASE/model_cache"
 PYTHON="/opt/comfy_env/bin/python"
 
@@ -14,10 +13,25 @@ echo "AI CREATION STACK BOOT"
 echo "========================================"
 
 # -------------------------------------------------
+# Wait for internet (RunPod DNS fix)
+# -------------------------------------------------
+
+echo "Checking internet connectivity..."
+
+for i in {1..10}
+do
+    if ping -c 1 github.com &> /dev/null; then
+        echo "Internet available."
+        break
+    fi
+    echo "Waiting for network..."
+    sleep 3
+done
+
+# -------------------------------------------------
 # Create base workspace
 # -------------------------------------------------
 
-mkdir -p $BASE
 mkdir -p $BASE/models
 mkdir -p $BASE/custom_nodes
 mkdir -p $BASE/input
@@ -34,7 +48,7 @@ export CUDA_LAUNCH_BLOCKING=0
 export TORCH_CUDNN_V8_API_ENABLED=1
 
 # -------------------------------------------------
-# Model cache
+# Cache folders
 # -------------------------------------------------
 
 mkdir -p $CACHE/huggingface
@@ -57,10 +71,34 @@ if [ ! -f "$COMFY/main.py" ]; then
     cd $BASE
     git clone https://github.com/comfyanonymous/ComfyUI.git
 
-    cd $COMFY
-    $PYTHON -m pip install -r requirements.txt
-
 fi
+
+# -------------------------------------------------
+# Install dependencies (SELF HEALING)
+# -------------------------------------------------
+
+echo "Installing ComfyUI dependencies..."
+
+cd $COMFY
+
+$PYTHON -m pip install --upgrade pip setuptools wheel
+
+for i in {1..5}
+do
+    $PYTHON -m pip install --no-cache-dir -r requirements.txt && break
+    echo "pip failed — retrying..."
+    sleep 5
+done
+
+# -------------------------------------------------
+# Fix missing modules (extra safety)
+# -------------------------------------------------
+
+$PYTHON -m pip install \
+aiohttp \
+alembic \
+sqlalchemy \
+--no-cache-dir || true
 
 # -------------------------------------------------
 # Link persistent folders
@@ -73,7 +111,7 @@ rm -rf $COMFY/output || true
 rm -rf $COMFY/user || true
 
 ln -s $BASE/models $COMFY/models
-ln -s $CUSTOM $COMFY/custom_nodes
+ln -s $BASE/custom_nodes $COMFY/custom_nodes
 ln -s $BASE/input $COMFY/input
 ln -s $BASE/output $COMFY/output
 ln -s $BASE/user $COMFY/user
@@ -83,6 +121,8 @@ ln -s $BASE/user $COMFY/user
 # -------------------------------------------------
 
 if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
+    echo "Installing ComfyUI Manager..."
+
     cd $CUSTOM
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git
 fi
@@ -92,8 +132,20 @@ fi
 # -------------------------------------------------
 
 if ! $PYTHON -c "import xformers" 2>/dev/null; then
+
+    echo "Installing xformers..."
+
     $PYTHON -m pip install xformers \
     --extra-index-url https://download.pytorch.org/whl/cu124
+fi
+
+# -------------------------------------------------
+# Install AIMDO if missing
+# -------------------------------------------------
+
+if ! $PYTHON -c "import comfy_aimdo" 2>/dev/null; then
+    echo "Installing comfy_aimdo..."
+    $PYTHON -m pip install comfy-aimdo || true
 fi
 
 # -------------------------------------------------
