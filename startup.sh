@@ -6,7 +6,10 @@ BASE="/workspace/runpod-slim"
 COMFY="$BASE/ComfyUI"
 CUSTOM="$BASE/custom_nodes"
 CACHE="$BASE/model_cache"
+
 PYTHON="/opt/comfy_env/bin/python"
+PIP="/opt/comfy_env/bin/pip"
+JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
 echo "AI CREATION STACK BOOT"
@@ -16,20 +19,20 @@ echo "========================================="
 # Wait for internet
 # -------------------------------------------------
 
-echo "Checking internet connectivity..."
+echo "Checking internet..."
 
-for i in {1..20}
+for i in {1..30}
 do
     if ping -c 1 github.com &> /dev/null; then
-        echo "Internet available."
+        echo "Internet OK"
         break
     fi
     echo "Waiting for network..."
-    sleep 3
+    sleep 2
 done
 
 # -------------------------------------------------
-# Create base workspace
+# Create workspace
 # -------------------------------------------------
 
 mkdir -p $BASE
@@ -38,10 +41,6 @@ mkdir -p $BASE/models
 mkdir -p $BASE/input
 mkdir -p $BASE/output
 mkdir -p $BASE/user
-
-# -------------------------------------------------
-# Cache folders
-# -------------------------------------------------
 
 mkdir -p $CACHE/huggingface
 mkdir -p $CACHE/torch
@@ -61,28 +60,33 @@ if [ ! -f "$COMFY/main.py" ]; then
     echo "Installing ComfyUI..."
 
     cd $BASE
+
+    rm -rf ComfyUI || true
+
     git clone https://github.com/comfyanonymous/ComfyUI.git
 
 fi
 
 # -------------------------------------------------
-# Install ComfyUI dependencies
+# Install dependencies
 # -------------------------------------------------
 
-echo "Installing ComfyUI dependencies..."
+echo "Installing ComfyUI requirements..."
 
 cd $COMFY
 
 for i in {1..5}
 do
-    $PYTHON -m pip install --no-cache-dir -r requirements.txt && break
-    echo "pip failed — retrying..."
+    $PIP install --no-cache-dir -r requirements.txt && break
+    echo "Retry pip install..."
     sleep 5
 done
 
 # -------------------------------------------------
-# Link persistent folders
+# Persistent folder linking
 # -------------------------------------------------
+
+echo "Linking persistent folders..."
 
 rm -rf $COMFY/models || true
 rm -rf $COMFY/custom_nodes || true
@@ -101,19 +105,25 @@ ln -s $BASE/user $COMFY/user
 # -------------------------------------------------
 
 if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
+
     echo "Installing ComfyUI Manager..."
+
     cd $CUSTOM
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git
+
 fi
 
 # -------------------------------------------------
 # Install xformers
 # -------------------------------------------------
 
-if ! $PYTHON -c "import xformers" 2>/dev/null; then
+if ! $PYTHON -c "import xformers" &> /dev/null; then
+
     echo "Installing xformers..."
-    $PYTHON -m pip install xformers \
+
+    $PIP install xformers \
     --extra-index-url https://download.pytorch.org/whl/cu124
+
 fi
 
 # -------------------------------------------------
@@ -122,7 +132,7 @@ fi
 
 echo "Starting Jupyter..."
 
-jupyter lab \
+$JUPYTER lab \
 --ip=0.0.0.0 \
 --port=8888 \
 --no-browser \
