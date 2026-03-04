@@ -148,7 +148,12 @@ fi
 
 echo "Starting Jupyter..."
 
+cd /workspace
+
 $JUPYTER lab \
+--notebook-dir=/workspace \
+--ServerApp.root_dir=/workspace \
+--ServerApp.allow_origin='*' \
 --ip=0.0.0.0 \
 --port=8888 \
 --no-browser \
