@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     sox \
     pkg-config \
     build-essential \
+    iputils-ping \
     python3.10 \
     python3.10-venv \
     python3.10-dev \
@@ -68,6 +69,7 @@ RUN pip install \
     sqlalchemy \
     alembic \
     aiohttp \
+    jupyter \
     jupyterlab \
     ipykernel \
     matplotlib \
