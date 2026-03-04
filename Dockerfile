@@ -2,6 +2,10 @@ FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# -------------------------------------------------
+# System dependencies
+# -------------------------------------------------
+
 RUN apt-get update && apt-get install -y \
     git \
     wget \
@@ -25,21 +29,35 @@ RUN apt-get update && apt-get install -y \
     libavutil-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# -------------------------------------------------
+# Python configuration
+# -------------------------------------------------
+
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 
 WORKDIR /workspace
 
-# Clean virtual environment
+# -------------------------------------------------
+# Python virtual environment
+# -------------------------------------------------
+
 RUN python -m venv /opt/comfy_env
 ENV PATH="/opt/comfy_env/bin:$PATH"
 
 RUN pip install --upgrade pip setuptools wheel
 
-# Torch
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# -------------------------------------------------
+# PyTorch (CUDA 12.4)
+# -------------------------------------------------
 
-# Core dependencies
+RUN pip install torch torchvision torchaudio \
+--index-url https://download.pytorch.org/whl/cu124
+
+# -------------------------------------------------
+# Core ML dependencies
+# -------------------------------------------------
+
 RUN pip install \
     transformers==4.40.2 \
     tokenizers==0.19.1 \
@@ -59,19 +77,25 @@ RUN pip install \
     librosa \
     av
 
-ENV HF_HOME=/workspace/models/huggingface_cache
-ENV TRANSFORMERS_CACHE=/workspace/models/huggingface_cache
+# -------------------------------------------------
+# HuggingFace cache
+# -------------------------------------------------
+
+ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
+ENV TRANSFORMERS_CACHE=/workspace/runpod-slim/model_cache/huggingface
+
+# -------------------------------------------------
+# Ports
+# -------------------------------------------------
 
 EXPOSE 8188
 EXPOSE 8888
 
-COPY startup.sh /startup.sh
-RUN chmod +x /startup.sh
+# -------------------------------------------------
+# Startup script
+# -------------------------------------------------
 
-CMD ["/startup.sh"]
+COPY startup.sh /opt/startup.sh
+RUN chmod +x /opt/startup.sh
 
-CMD bash -c "\
-jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --IdentityProvider.token='' & \
-cd /workspace/runpod-slim/ComfyUI && \
-exec python main.py --listen 0.0.0.0 --port 8188 \
-"
+ENTRYPOINT ["/opt/startup.sh"]
