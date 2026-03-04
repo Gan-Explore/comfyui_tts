@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # -------------------------------------------------
-# Python configuration
+# Python setup
 # -------------------------------------------------
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1
@@ -49,14 +49,14 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 RUN pip install --upgrade pip setuptools wheel
 
 # -------------------------------------------------
-# PyTorch (CUDA 12.4)
+# Install PyTorch (CUDA 12.4)
 # -------------------------------------------------
 
 RUN pip install torch torchvision torchaudio \
 --index-url https://download.pytorch.org/whl/cu124
 
 # -------------------------------------------------
-# Core ML dependencies
+# Core libraries
 # -------------------------------------------------
 
 RUN pip install \
@@ -94,7 +94,7 @@ EXPOSE 8188
 EXPOSE 8888
 
 # -------------------------------------------------
-# Startup script
+# Startup
 # -------------------------------------------------
 
 COPY startup.sh /opt/startup.sh
