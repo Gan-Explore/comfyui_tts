@@ -13,12 +13,12 @@ echo "AI CREATION STACK BOOT"
 echo "========================================"
 
 # -------------------------------------------------
-# Wait for internet (RunPod DNS fix)
+# Wait for internet
 # -------------------------------------------------
 
 echo "Checking internet connectivity..."
 
-for i in {1..10}
+for i in {1..20}
 do
     if ping -c 1 github.com &> /dev/null; then
         echo "Internet available."
@@ -32,20 +32,12 @@ done
 # Create base workspace
 # -------------------------------------------------
 
+mkdir -p $BASE
+mkdir -p $CUSTOM
 mkdir -p $BASE/models
-mkdir -p $BASE/custom_nodes
 mkdir -p $BASE/input
 mkdir -p $BASE/output
 mkdir -p $BASE/user
-
-# -------------------------------------------------
-# GPU optimization
-# -------------------------------------------------
-
-export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128
-export CUDA_DEVICE_MAX_CONNECTIONS=1
-export CUDA_LAUNCH_BLOCKING=0
-export TORCH_CUDNN_V8_API_ENABLED=1
 
 # -------------------------------------------------
 # Cache folders
@@ -74,14 +66,12 @@ if [ ! -f "$COMFY/main.py" ]; then
 fi
 
 # -------------------------------------------------
-# Install dependencies (SELF HEALING)
+# Install ComfyUI dependencies
 # -------------------------------------------------
 
 echo "Installing ComfyUI dependencies..."
 
 cd $COMFY
-
-$PYTHON -m pip install --upgrade pip setuptools wheel
 
 for i in {1..5}
 do
@@ -89,16 +79,6 @@ do
     echo "pip failed — retrying..."
     sleep 5
 done
-
-# -------------------------------------------------
-# Fix missing modules (extra safety)
-# -------------------------------------------------
-
-$PYTHON -m pip install \
-aiohttp \
-alembic \
-sqlalchemy \
---no-cache-dir || true
 
 # -------------------------------------------------
 # Link persistent folders
@@ -122,30 +102,18 @@ ln -s $BASE/user $COMFY/user
 
 if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
     echo "Installing ComfyUI Manager..."
-
     cd $CUSTOM
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git
 fi
 
 # -------------------------------------------------
-# GPU acceleration
+# Install xformers
 # -------------------------------------------------
 
 if ! $PYTHON -c "import xformers" 2>/dev/null; then
-
     echo "Installing xformers..."
-
     $PYTHON -m pip install xformers \
     --extra-index-url https://download.pytorch.org/whl/cu124
-fi
-
-# -------------------------------------------------
-# Install AIMDO if missing
-# -------------------------------------------------
-
-if ! $PYTHON -c "import comfy_aimdo" 2>/dev/null; then
-    echo "Installing comfy_aimdo..."
-    $PYTHON -m pip install comfy-aimdo || true
 fi
 
 # -------------------------------------------------
