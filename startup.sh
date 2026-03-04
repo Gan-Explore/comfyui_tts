@@ -16,12 +16,21 @@ echo "AI CREATION STACK BOOT"
 echo "========================================="
 
 # -------------------------------------------------
+# DNS FIX (RunPod cold start issue)
+# -------------------------------------------------
+
+echo "Fixing DNS..."
+
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+
+# -------------------------------------------------
 # Wait for internet
 # -------------------------------------------------
 
 echo "Checking internet..."
 
-for i in {1..30}
+for i in {1..60}
 do
     if ping -c 1 github.com &> /dev/null; then
         echo "Internet OK"
@@ -68,18 +77,25 @@ if [ ! -f "$COMFY/main.py" ]; then
 fi
 
 # -------------------------------------------------
-# Install dependencies
+# Install dependencies (resilient pip)
 # -------------------------------------------------
 
 echo "Installing ComfyUI requirements..."
 
 cd $COMFY
 
-for i in {1..5}
+for i in {1..10}
 do
-    $PIP install --no-cache-dir -r requirements.txt && break
-    echo "Retry pip install..."
-    sleep 5
+    echo "PIP install attempt $i"
+
+    $PIP install \
+        --default-timeout=100 \
+        --retries 20 \
+        --no-cache-dir \
+        -r requirements.txt && break
+
+    echo "Network failure — retrying in 10 seconds..."
+    sleep 10
 done
 
 # -------------------------------------------------
@@ -114,7 +130,7 @@ if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
 fi
 
 # -------------------------------------------------
-# Install xformers
+# Install xformers if missing
 # -------------------------------------------------
 
 if ! $PYTHON -c "import xformers" &> /dev/null; then
