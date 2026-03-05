@@ -72,16 +72,14 @@ if [ ! -f "$COMFY/main.py" ]; then
     echo "Installing ComfyUI..."
 
     cd $BASE
-
     rm -rf ComfyUI || true
-
     git clone https://github.com/comfyanonymous/ComfyUI.git
 
 fi
 
 
 # -------------------------------------------------
-# Install dependencies (resilient pip)
+# Install dependencies
 # -------------------------------------------------
 
 echo "Installing ComfyUI requirements..."
@@ -98,16 +96,18 @@ do
         --no-cache-dir \
         -r requirements.txt && break
 
-    echo "Network failure — retrying in 10 seconds..."
+    echo "Network failure — retrying..."
     sleep 10
 done
 
 
 # -------------------------------------------------
-# Runtime dependencies (critical fixes)
+# Runtime dependency fixes
 # -------------------------------------------------
 
 echo "Installing runtime dependencies..."
+
+$PIP uninstall -y transformers || true
 
 $PIP install --no-cache-dir \
 gitpython \
@@ -174,10 +174,10 @@ import subprocess
 import sys
 import re
 
-print("Self-healing dependency scanner started...")
+print("Self-healing dependency scanner active")
 
 def install(pkg):
-    print(f"Installing missing package: {pkg}")
+    print(f"[AUTO INSTALL] {pkg}")
     subprocess.call(["/opt/comfy_env/bin/pip","install",pkg])
 
 while True:
@@ -185,12 +185,43 @@ while True:
     if not line:
         break
 
-    match=re.search(r"No module named '([^']+)'",line)
+    m=re.search(r"No module named '([^']+)'",line)
 
-    if match:
-        pkg=match.group(1)
+    if m:
+        pkg=m.group(1)
         install(pkg)
 EOF
+
+
+# -------------------------------------------------
+# AUTO NODE INSTALLER
+# -------------------------------------------------
+
+echo "Creating auto-node installer..."
+
+cat << 'EOF' > $BASE/scripts/node_installer.py
+import os
+import subprocess
+
+CUSTOM="/workspace/runpod-slim/custom_nodes"
+
+repos={
+"ComfyUI-Qwen-TTS":"https://github.com/flybirdxx/ComfyUI-Qwen-TTS.git",
+"ComfyUI-XTTS":"https://github.com/daswer123/ComfyUI-XTTS.git",
+"KJNodes":"https://github.com/kijai/ComfyUI-KJNodes.git"
+}
+
+for name,repo in repos.items():
+
+    path=os.path.join(CUSTOM,name)
+
+    if not os.path.exists(path):
+        print(f"[AUTO NODE INSTALL] {name}")
+        subprocess.call(["git","clone",repo,path])
+EOF
+
+
+$PYTHON $BASE/scripts/node_installer.py
 
 
 # -------------------------------------------------
@@ -203,19 +234,18 @@ cd /workspace
 
 $JUPYTER lab \
 --notebook-dir=/workspace \
---ServerApp.root_dir=/workspace \
---ServerApp.allow_origin='*' \
 --ip=0.0.0.0 \
 --port=8888 \
 --no-browser \
 --allow-root \
+--ServerApp.allow_origin='*' \
 --IdentityProvider.token='' &
 
 sleep 3
 
 
 # -------------------------------------------------
-# Start ComfyUI with self-healing
+# Start ComfyUI
 # -------------------------------------------------
 
 echo "Starting ComfyUI..."
