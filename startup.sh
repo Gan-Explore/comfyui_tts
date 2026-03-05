@@ -24,6 +24,7 @@ echo "Fixing DNS..."
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
+
 # -------------------------------------------------
 # Wait for internet
 # -------------------------------------------------
@@ -39,6 +40,7 @@ do
     echo "Waiting for network..."
     sleep 2
 done
+
 
 # -------------------------------------------------
 # Create workspace
@@ -60,6 +62,7 @@ export TRANSFORMERS_CACHE=$CACHE/huggingface
 export TORCH_HOME=$CACHE/torch
 export XDG_CACHE_HOME=$CACHE
 
+
 # -------------------------------------------------
 # Install ComfyUI if missing
 # -------------------------------------------------
@@ -75,6 +78,7 @@ if [ ! -f "$COMFY/main.py" ]; then
     git clone https://github.com/comfyanonymous/ComfyUI.git
 
 fi
+
 
 # -------------------------------------------------
 # Install dependencies (resilient pip)
@@ -98,6 +102,18 @@ do
     sleep 10
 done
 
+
+# -------------------------------------------------
+# Runtime dependencies (critical fixes)
+# -------------------------------------------------
+
+echo "Installing runtime dependencies..."
+
+$PIP install --no-cache-dir \
+gitpython \
+"transformers<5"
+
+
 # -------------------------------------------------
 # Persistent folder linking
 # -------------------------------------------------
@@ -116,6 +132,7 @@ ln -s $BASE/input $COMFY/input
 ln -s $BASE/output $COMFY/output
 ln -s $BASE/user $COMFY/user
 
+
 # -------------------------------------------------
 # Install ComfyUI Manager
 # -------------------------------------------------
@@ -129,6 +146,7 @@ if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
 
 fi
 
+
 # -------------------------------------------------
 # Install xformers if missing
 # -------------------------------------------------
@@ -141,6 +159,39 @@ if ! $PYTHON -c "import xformers" &> /dev/null; then
     --extra-index-url https://download.pytorch.org/whl/cu124
 
 fi
+
+
+# -------------------------------------------------
+# SELF HEALING PYTHON MODULE INSTALLER
+# -------------------------------------------------
+
+echo "Creating self-healing dependency system..."
+
+mkdir -p $BASE/scripts
+
+cat << 'EOF' > $BASE/scripts/self_heal.py
+import subprocess
+import sys
+import re
+
+print("Self-healing dependency scanner started...")
+
+def install(pkg):
+    print(f"Installing missing package: {pkg}")
+    subprocess.call(["/opt/comfy_env/bin/pip","install",pkg])
+
+while True:
+    line=sys.stdin.readline()
+    if not line:
+        break
+
+    match=re.search(r"No module named '([^']+)'",line)
+
+    if match:
+        pkg=match.group(1)
+        install(pkg)
+EOF
+
 
 # -------------------------------------------------
 # Start Jupyter
@@ -162,14 +213,15 @@ $JUPYTER lab \
 
 sleep 3
 
+
 # -------------------------------------------------
-# Start ComfyUI
+# Start ComfyUI with self-healing
 # -------------------------------------------------
 
 echo "Starting ComfyUI..."
 
 cd $COMFY
 
-exec $PYTHON main.py \
+$PYTHON main.py \
 --listen 0.0.0.0 \
---port 8188
+--port 8188 2>&1 | tee /tmp/comfy.log | $PYTHON $BASE/scripts/self_heal.py
