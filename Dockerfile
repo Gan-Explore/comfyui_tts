@@ -40,7 +40,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1
 WORKDIR /workspace
 
 # -------------------------------------------------
-# Python virtual environment
+# Virtual environment
 # -------------------------------------------------
 
 RUN python -m venv /opt/comfy_env
@@ -49,14 +49,14 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 RUN pip install --upgrade pip setuptools wheel
 
 # -------------------------------------------------
-# Install PyTorch (CUDA 12.4)
+# PyTorch (CUDA 12.4)
 # -------------------------------------------------
 
 RUN pip install torch torchvision torchaudio \
 --index-url https://download.pytorch.org/whl/cu124
 
 # -------------------------------------------------
-# Core libraries
+# Core stable libraries (LOCKED)
 # -------------------------------------------------
 
 RUN pip install \
@@ -77,10 +77,10 @@ RUN pip install \
     scipy \
     soundfile \
     librosa \
-    av
+    "av>=12.0.0"
 
 # -------------------------------------------------
-# HuggingFace cache
+# Cache paths
 # -------------------------------------------------
 
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
