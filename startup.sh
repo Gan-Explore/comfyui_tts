@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 BASE="/workspace/runpod-slim"
@@ -12,27 +11,23 @@ PIP="/opt/comfy_env/bin/pip"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT"
+echo "AI CREATION STACK BOOT (STABLE)"
 echo "========================================="
 
 # -------------------------------------------------
-# DNS FIX (RunPod cold start issue)
+# Fix DNS
 # -------------------------------------------------
 
 echo "Fixing DNS..."
-
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-
 
 # -------------------------------------------------
 # Wait for internet
 # -------------------------------------------------
 
 echo "Checking internet..."
-
-for i in {1..60}
-do
+for i in {1..60}; do
     if ping -c 1 github.com &> /dev/null; then
         echo "Internet OK"
         break
@@ -41,90 +36,71 @@ do
     sleep 2
 done
 
+# -------------------------------------------------
+# Clean conflicting environments
+# -------------------------------------------------
+
+echo "Cleaning old environments..."
+rm -rf /workspace/runpod-slim/xtts_env || true
 
 # -------------------------------------------------
 # Create workspace
 # -------------------------------------------------
 
-mkdir -p $BASE
-mkdir -p $CUSTOM
-mkdir -p $BASE/models
-mkdir -p $BASE/input
-mkdir -p $BASE/output
-mkdir -p $BASE/user
-
-mkdir -p $CACHE/huggingface
-mkdir -p $CACHE/torch
-mkdir -p $CACHE/diffusers
+mkdir -p $BASE/{models,input,output,user,custom_nodes}
+mkdir -p $CACHE/{huggingface,torch,diffusers}
 
 export HF_HOME=$CACHE/huggingface
 export TRANSFORMERS_CACHE=$CACHE/huggingface
 export TORCH_HOME=$CACHE/torch
 export XDG_CACHE_HOME=$CACHE
 
-
 # -------------------------------------------------
-# Install ComfyUI if missing
+# Install ComfyUI (only if missing)
 # -------------------------------------------------
 
 if [ ! -f "$COMFY/main.py" ]; then
-
     echo "Installing ComfyUI..."
-
     cd $BASE
-    rm -rf ComfyUI || true
     git clone https://github.com/comfyanonymous/ComfyUI.git
-
+else
+    echo "ComfyUI exists — skipping install"
 fi
 
-
 # -------------------------------------------------
-# Install dependencies
+# Install requirements
 # -------------------------------------------------
 
 echo "Installing ComfyUI requirements..."
-
 cd $COMFY
 
-for i in {1..10}
-do
-    echo "PIP install attempt $i"
-
-    $PIP install \
-        --default-timeout=100 \
-        --retries 20 \
-        --no-cache-dir \
-        -r requirements.txt && break
-
-    echo "Network failure — retrying..."
-    sleep 10
+for i in {1..5}; do
+    $PIP install --no-cache-dir -r requirements.txt && break
+    echo "Retrying pip..."
+    sleep 5
 done
 
-
 # -------------------------------------------------
-# Runtime dependency fixes
+# LOCK transformers (CRITICAL)
 # -------------------------------------------------
 
-echo "Installing runtime dependencies..."
+echo "Fixing transformers version..."
 
 $PIP uninstall -y transformers || true
 
 $PIP install --no-cache-dir \
-gitpython \
-"transformers<5"
-
+transformers==4.40.2 \
+tokenizers==0.19.1 \
+huggingface-hub==0.36.2 \
+gitpython
 
 # -------------------------------------------------
-# Persistent folder linking
+# Link persistent folders
 # -------------------------------------------------
 
-echo "Linking persistent folders..."
+echo "Linking persistent storage..."
 
-rm -rf $COMFY/models || true
-rm -rf $COMFY/custom_nodes || true
-rm -rf $COMFY/input || true
-rm -rf $COMFY/output || true
-rm -rf $COMFY/user || true
+rm -rf $COMFY/{models,custom_nodes,input,output,user} || true
 
 ln -s $BASE/models $COMFY/models
 ln -s $BASE/custom_nodes $COMFY/custom_nodes
@@ -132,76 +108,24 @@ ln -s $BASE/input $COMFY/input
 ln -s $BASE/output $COMFY/output
 ln -s $BASE/user $COMFY/user
 
-
 # -------------------------------------------------
-# Install ComfyUI Manager
+# Install Manager
 # -------------------------------------------------
 
 if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
-
     echo "Installing ComfyUI Manager..."
-
     cd $CUSTOM
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git
-
 fi
 
-
 # -------------------------------------------------
-# Install xformers if missing
+# Install core nodes (auto)
 # -------------------------------------------------
-
-if ! $PYTHON -c "import xformers" &> /dev/null; then
-
-    echo "Installing xformers..."
-
-    $PIP install xformers \
-    --extra-index-url https://download.pytorch.org/whl/cu124
-
-fi
-
-
-# -------------------------------------------------
-# SELF HEALING PYTHON MODULE INSTALLER
-# -------------------------------------------------
-
-echo "Creating self-healing dependency system..."
 
 mkdir -p $BASE/scripts
 
-cat << 'EOF' > $BASE/scripts/self_heal.py
-import subprocess
-import sys
-import re
-
-print("Self-healing dependency scanner active")
-
-def install(pkg):
-    print(f"[AUTO INSTALL] {pkg}")
-    subprocess.call(["/opt/comfy_env/bin/pip","install",pkg])
-
-while True:
-    line=sys.stdin.readline()
-    if not line:
-        break
-
-    m=re.search(r"No module named '([^']+)'",line)
-
-    if m:
-        pkg=m.group(1)
-        install(pkg)
-EOF
-
-
-# -------------------------------------------------
-# AUTO NODE INSTALLER
-# -------------------------------------------------
-
-echo "Creating auto-node installer..."
-
 cat << 'EOF' > $BASE/scripts/node_installer.py
-import os
-import subprocess
+import os, subprocess
 
 CUSTOM="/workspace/runpod-slim/custom_nodes"
 
@@ -212,20 +136,61 @@ repos={
 }
 
 for name,repo in repos.items():
-
     path=os.path.join(CUSTOM,name)
-
     if not os.path.exists(path):
-        print(f"[AUTO NODE INSTALL] {name}")
+        print(f"[INSTALL NODE] {name}")
         subprocess.call(["git","clone",repo,path])
 EOF
 
-
 $PYTHON $BASE/scripts/node_installer.py
 
+# -------------------------------------------------
+# Install xformers
+# -------------------------------------------------
+
+if ! $PYTHON -c "import xformers" &> /dev/null; then
+    echo "Installing xformers..."
+    $PIP install xformers --extra-index-url https://download.pytorch.org/whl/cu124
+fi
 
 # -------------------------------------------------
-# Start Jupyter
+# SAFE SELF-HEAL SYSTEM
+# -------------------------------------------------
+
+cat << 'EOF' > $BASE/scripts/self_heal.py
+import subprocess, sys, re
+
+SAFE = {"einops","sentencepiece","safetensors","soundfile","librosa","scipy","numpy"}
+
+print("Self-heal active (safe mode)")
+
+def install(p):
+    if p in SAFE:
+        print(f"[AUTO INSTALL] {p}")
+        subprocess.call(["/opt/comfy_env/bin/pip","install",p])
+    else:
+        print(f"[SKIP UNKNOWN] {p}")
+
+while True:
+    line=sys.stdin.readline()
+    if not line:
+        break
+    m=re.search(r"No module named '([^']+)'",line)
+    if m:
+        install(m.group(1))
+EOF
+
+# -------------------------------------------------
+# Debug info
+# -------------------------------------------------
+
+echo "Python:"
+which python
+
+python -c "import transformers; print('Transformers:', transformers.__version__)"
+
+# -------------------------------------------------
+# Start Jupyter (correct dir)
 # -------------------------------------------------
 
 echo "Starting Jupyter..."
@@ -243,7 +208,6 @@ $JUPYTER lab \
 
 sleep 3
 
-
 # -------------------------------------------------
 # Start ComfyUI
 # -------------------------------------------------
@@ -254,4 +218,5 @@ cd $COMFY
 
 $PYTHON main.py \
 --listen 0.0.0.0 \
---port 8188 2>&1 | tee /tmp/comfy.log | $PYTHON $BASE/scripts/self_heal.py
+--port 8188 \
+2>&1 | tee /tmp/comfy.log | $PYTHON $BASE/scripts/self_heal.py
