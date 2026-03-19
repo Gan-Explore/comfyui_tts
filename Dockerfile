@@ -60,7 +60,7 @@ RUN pip install torch torchvision torchaudio \
 # -------------------------------------------------
 
 RUN pip install \
-    transformers==4.40.2 \
+    transformers==4.41.2 \
     tokenizers==0.19.1 \
     huggingface-hub==0.36.2 \
     accelerate==0.30.1 \
@@ -77,7 +77,9 @@ RUN pip install \
     scipy \
     soundfile \
     librosa \
-    "av>=12.0.0"
+    av>=12.0.0 \
+    gitpython \
+    toml
 
 # -------------------------------------------------
 # Cache paths
