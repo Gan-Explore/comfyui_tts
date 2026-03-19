@@ -7,11 +7,10 @@ CUSTOM="$BASE/custom_nodes"
 CACHE="$BASE/model_cache"
 
 PYTHON="/opt/comfy_env/bin/python"
-PIP="/opt/comfy_env/bin/pip"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT (STABLE)"
+echo "AI CREATION STACK BOOT (STABLE v2)"
 echo "========================================="
 
 # -------------------------------------------------
@@ -27,7 +26,7 @@ echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 # -------------------------------------------------
 
 echo "Checking internet..."
-for i in {1..60}; do
+for i in {1..30}; do
     if ping -c 1 github.com &> /dev/null; then
         echo "Internet OK"
         break
@@ -35,13 +34,6 @@ for i in {1..60}; do
     echo "Waiting for network..."
     sleep 2
 done
-
-# -------------------------------------------------
-# Clean conflicting environments
-# -------------------------------------------------
-
-echo "Cleaning old environments..."
-rm -rf /workspace/runpod-slim/xtts_env || true
 
 # -------------------------------------------------
 # Create workspace
@@ -68,33 +60,6 @@ else
 fi
 
 # -------------------------------------------------
-# Install requirements
-# -------------------------------------------------
-
-echo "Installing ComfyUI requirements..."
-cd $COMFY
-
-for i in {1..5}; do
-    $PIP install --no-cache-dir -r requirements.txt && break
-    echo "Retrying pip..."
-    sleep 5
-done
-
-# -------------------------------------------------
-# LOCK transformers (CRITICAL)
-# -------------------------------------------------
-
-echo "Fixing transformers version..."
-
-$PIP uninstall -y transformers || true
-
-$PIP install --no-cache-dir \
-transformers==4.40.2 \
-tokenizers==0.19.1 \
-huggingface-hub==0.36.2 \
-gitpython
-
-# -------------------------------------------------
 # Link persistent folders
 # -------------------------------------------------
 
@@ -109,17 +74,7 @@ ln -s $BASE/output $COMFY/output
 ln -s $BASE/user $COMFY/user
 
 # -------------------------------------------------
-# Install Manager
-# -------------------------------------------------
-
-if [ ! -d "$CUSTOM/ComfyUI-Manager" ]; then
-    echo "Installing ComfyUI Manager..."
-    cd $CUSTOM
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git
-fi
-
-# -------------------------------------------------
-# Install core nodes (auto)
+# Install nodes (only if missing)
 # -------------------------------------------------
 
 mkdir -p $BASE/scripts
@@ -143,15 +98,6 @@ for name,repo in repos.items():
 EOF
 
 $PYTHON $BASE/scripts/node_installer.py
-
-# -------------------------------------------------
-# Install xformers
-# -------------------------------------------------
-
-if ! $PYTHON -c "import xformers" &> /dev/null; then
-    echo "Installing xformers..."
-    $PIP install xformers --extra-index-url https://download.pytorch.org/whl/cu124
-fi
 
 # -------------------------------------------------
 # SAFE SELF-HEAL SYSTEM
@@ -190,7 +136,7 @@ which python
 python -c "import transformers; print('Transformers:', transformers.__version__)"
 
 # -------------------------------------------------
-# Start Jupyter (correct dir)
+# Start Jupyter
 # -------------------------------------------------
 
 echo "Starting Jupyter..."
