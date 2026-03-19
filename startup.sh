@@ -7,10 +7,11 @@ CUSTOM="$BASE/custom_nodes"
 CACHE="$BASE/model_cache"
 
 PYTHON="/opt/comfy_env/bin/python"
+PIP="/opt/comfy_env/bin/pip"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT (STABLE v2)"
+echo "AI CREATION STACK BOOT (STABLE v3)"
 echo "========================================="
 
 # -------------------------------------------------
@@ -54,7 +55,7 @@ export XDG_CACHE_HOME=$CACHE
 if [ ! -f "$COMFY/main.py" ]; then
     echo "Installing ComfyUI..."
     cd $BASE
-    git clone https://github.com/comfyanonymous/ComfyUI.git
+    git clone https://github.com/comfyanonymous/ComfyUI.git || true
 else
     echo "ComfyUI exists — skipping install"
 fi
@@ -74,7 +75,7 @@ ln -s $BASE/output $COMFY/output
 ln -s $BASE/user $COMFY/user
 
 # -------------------------------------------------
-# Install nodes (only if missing)
+# Install nodes safely
 # -------------------------------------------------
 
 mkdir -p $BASE/scripts
@@ -93,14 +94,17 @@ repos={
 for name,repo in repos.items():
     path=os.path.join(CUSTOM,name)
     if not os.path.exists(path):
-        print(f"[INSTALL NODE] {name}")
-        subprocess.call(["git","clone",repo,path])
+        try:
+            print(f"[INSTALL NODE] {name}")
+            subprocess.check_call(["git","clone",repo,path])
+        except Exception as e:
+            print(f"[FAILED NODE INSTALL] {name}: {e}")
 EOF
 
 $PYTHON $BASE/scripts/node_installer.py
 
 # -------------------------------------------------
-# SAFE SELF-HEAL SYSTEM
+# Self-heal system (safe)
 # -------------------------------------------------
 
 cat << 'EOF' > $BASE/scripts/self_heal.py
@@ -155,14 +159,19 @@ $JUPYTER lab \
 sleep 3
 
 # -------------------------------------------------
-# Start ComfyUI
+# Start ComfyUI (safe mode)
 # -------------------------------------------------
 
 echo "Starting ComfyUI..."
 
 cd $COMFY
 
+set +e
+
 $PYTHON main.py \
 --listen 0.0.0.0 \
 --port 8188 \
 2>&1 | tee /tmp/comfy.log | $PYTHON $BASE/scripts/self_heal.py
+
+echo "ComfyUI exited. Keeping container alive..."
+tail -f /dev/null
