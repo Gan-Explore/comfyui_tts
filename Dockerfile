@@ -56,11 +56,11 @@ RUN pip install torch torchvision torchaudio \
 --index-url https://download.pytorch.org/whl/cu124
 
 # -------------------------------------------------
-# Core stable libraries (LOCKED)
+# Core libraries (Qwen-compatible)
 # -------------------------------------------------
 
 RUN pip install \
-    transformers==4.41.2 \
+    transformers==4.40.2 \
     tokenizers==0.19.1 \
     huggingface-hub==0.36.2 \
     accelerate==0.30.1 \
