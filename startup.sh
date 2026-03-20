@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "CLEAN START (FINAL STABLE)"
+echo "CLEAN START (TRUE FINAL)"
 echo "========================================="
 
 # Fix DNS
@@ -29,25 +29,20 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# ✅ Install REQUIRED dependencies (THIS FIXES YOUR LOOP)
-echo "Installing ComfyUI dependencies..."
+# 🔥 CRITICAL FIX: install official requirements
+echo "Installing ComfyUI requirements..."
 
 $PYTHON -m pip install --upgrade pip
 
+$PYTHON -m pip install -r requirements.txt
+
+# Optional but useful extras
 $PYTHON -m pip install \
-einops \
-numpy \
-pillow \
-scipy \
-tqdm \
-pyyaml \
 opencv-python \
 scikit-image \
-safetensors \
-aiohttp \
-yarl
+blake3
 
-# 🔥 SAFE comfy_aimdo FIX (no file edits)
+# 🔥 SAFE comfy_aimdo FIX (no editing main.py)
 echo "Creating safe comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
@@ -72,7 +67,7 @@ ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 ln -sfn $BASE/input $COMFY/input
 ln -sfn $BASE/output $COMFY/output
 
-# Start Jupyter (background)
+# Start Jupyter
 echo "Starting Jupyter..."
 cd /workspace
 
@@ -87,7 +82,7 @@ $JUPYTER lab \
 
 sleep 3
 
-# Start ComfyUI (main process)
+# Start ComfyUI
 echo "Starting ComfyUI..."
 cd $COMFY
 
