@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "CLEAN START (TRUE FINAL)"
+echo "CLEAN START (ULTIMATE FINAL)"
 echo "========================================="
 
 # Fix DNS
@@ -29,31 +29,39 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# 🔥 CRITICAL FIX: install official requirements
+# Install official requirements
 echo "Installing ComfyUI requirements..."
 
 $PYTHON -m pip install --upgrade pip
-
 $PYTHON -m pip install -r requirements.txt
 
-# Optional but useful extras
+# Optional extras
 $PYTHON -m pip install \
 opencv-python \
 scikit-image \
 blake3
 
-# 🔥 SAFE comfy_aimdo FIX (no editing main.py)
-echo "Creating safe comfy_aimdo stub..."
+# 🔥 COMPLETE comfy_aimdo stub (FINAL FIX)
+echo "Creating full comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
 
+# __init__
 cat <<EOF > /workspace/fake_modules/comfy_aimdo/__init__.py
 from .control import init
 EOF
 
+# control.py
 cat <<EOF > /workspace/fake_modules/comfy_aimdo/control.py
 def init():
     print("[INFO] comfy_aimdo stub loaded — doing nothing")
+EOF
+
+# model_vbar.py (fixes your current crash)
+cat <<EOF > /workspace/fake_modules/comfy_aimdo/model_vbar.py
+class ModelVBar:
+    def __init__(self, *args, **kwargs):
+        pass
 EOF
 
 export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
