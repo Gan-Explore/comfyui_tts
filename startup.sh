@@ -11,7 +11,7 @@ PIP="/opt/comfy_env/bin/pip"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT (STABLE v3)"
+echo "AI CREATION STACK BOOT (STABLE v4)"
 echo "========================================="
 
 # -------------------------------------------------
@@ -58,6 +58,25 @@ if [ ! -f "$COMFY/main.py" ]; then
     git clone https://github.com/comfyanonymous/ComfyUI.git || true
 else
     echo "ComfyUI exists — skipping install"
+fi
+
+# -------------------------------------------------
+# 🔥 Patch comfy_aimdo crash (PERMANENT FIX)
+# -------------------------------------------------
+
+echo "Patching comfy_aimdo issue..."
+
+MAIN_FILE="$COMFY/main.py"
+
+if grep -q "comfy_aimdo.control.init()" "$MAIN_FILE"; then
+    echo "[PATCH] Applying comfy_aimdo fix..."
+
+    sed -i 's/import comfy_aimdo.control/try:\n    import comfy_aimdo.control\n    HAS_AIMDO = True\nexcept ImportError:\n    print("[WARN] comfy_aimdo not found — skipping")\n    HAS_AIMDO = False/' "$MAIN_FILE"
+
+    sed -i 's/comfy_aimdo.control.init()/if HAS_AIMDO:\n    comfy_aimdo.control.init()/' "$MAIN_FILE"
+
+else
+    echo "[PATCH] comfy_aimdo already handled or not present"
 fi
 
 # -------------------------------------------------
