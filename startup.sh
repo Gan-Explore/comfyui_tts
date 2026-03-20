@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "CLEAN START (STABLE MODE)"
+echo "CLEAN START (FINAL STABLE)"
 echo "========================================="
 
 # Fix DNS
@@ -21,13 +21,33 @@ for i in {1..20}; do
     sleep 2
 done
 
-# Clean install
+# Clean install ComfyUI
 echo "Installing fresh ComfyUI..."
 rm -rf $COMFY
 cd $BASE
 git clone https://github.com/comfyanonymous/ComfyUI.git
 
-# 🔥 KEY FIX: create fake comfy_aimdo module
+cd $COMFY
+
+# ✅ Install REQUIRED dependencies (THIS FIXES YOUR LOOP)
+echo "Installing ComfyUI dependencies..."
+
+$PYTHON -m pip install --upgrade pip
+
+$PYTHON -m pip install \
+einops \
+numpy \
+pillow \
+scipy \
+tqdm \
+pyyaml \
+opencv-python \
+scikit-image \
+safetensors \
+aiohttp \
+yarl
+
+# 🔥 SAFE comfy_aimdo FIX (no file edits)
 echo "Creating safe comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
@@ -41,20 +61,21 @@ def init():
     print("[INFO] comfy_aimdo stub loaded — doing nothing")
 EOF
 
-# Inject into PYTHONPATH
 export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
 
-# Create folders
+# Create persistent folders
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
-# Link folders
+# Link persistent storage
 ln -sfn $BASE/models $COMFY/models
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 ln -sfn $BASE/input $COMFY/input
 ln -sfn $BASE/output $COMFY/output
 
-# Start Jupyter
+# Start Jupyter (background)
+echo "Starting Jupyter..."
 cd /workspace
+
 $JUPYTER lab \
 --notebook-dir=/workspace \
 --ip=0.0.0.0 \
@@ -66,6 +87,8 @@ $JUPYTER lab \
 
 sleep 3
 
-# Start ComfyUI
+# Start ComfyUI (main process)
+echo "Starting ComfyUI..."
 cd $COMFY
+
 exec $PYTHON main.py --listen 0.0.0.0 --port 8188
