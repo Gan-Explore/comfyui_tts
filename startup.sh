@@ -9,7 +9,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT (STABLE v6 CLEAN)"
+echo "AI STACK BOOT (FINAL STABLE)"
 echo "========================================="
 
 # -------------------------------------------------
@@ -34,7 +34,18 @@ for i in {1..30}; do
 done
 
 # -------------------------------------------------
-# Create workspace
+# CLEAN INSTALL (CRITICAL FIX)
+# -------------------------------------------------
+
+echo "Resetting ComfyUI..."
+
+rm -rf $COMFY
+
+cd $BASE
+git clone https://github.com/comfyanonymous/ComfyUI.git
+
+# -------------------------------------------------
+# Create folders
 # -------------------------------------------------
 
 mkdir -p $BASE/{models,input,output,user,custom_nodes}
@@ -44,33 +55,19 @@ export HF_HOME=$CACHE/huggingface
 export TRANSFORMERS_CACHE=$CACHE/huggingface
 
 # -------------------------------------------------
-# 🔥 CLEAN INSTALL (IMPORTANT FIX)
-# -------------------------------------------------
-
-echo "Ensuring clean ComfyUI..."
-
-if [ -d "$COMFY" ]; then
-    echo "Removing corrupted ComfyUI..."
-    rm -rf $COMFY
-fi
-
-cd $BASE
-git clone https://github.com/comfyanonymous/ComfyUI.git
-
-# -------------------------------------------------
-# Link persistent folders
+# Link folders
 # -------------------------------------------------
 
 echo "Linking storage..."
 
-ln -s $BASE/models $COMFY/models
-ln -s $BASE/custom_nodes $COMFY/custom_nodes
-ln -s $BASE/input $COMFY/input
-ln -s $BASE/output $COMFY/output
-ln -s $BASE/user $COMFY/user
+ln -sfn $BASE/models $COMFY/models
+ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
+ln -sfn $BASE/input $COMFY/input
+ln -sfn $BASE/output $COMFY/output
+ln -sfn $BASE/user $COMFY/user
 
 # -------------------------------------------------
-# Debug info
+# Debug
 # -------------------------------------------------
 
 echo "Python:"
@@ -98,16 +95,13 @@ $JUPYTER lab \
 sleep 3
 
 # -------------------------------------------------
-# 🚀 Start ComfyUI (PURE, NO PATCHES)
+# Start ComfyUI (ONLY ONCE)
 # -------------------------------------------------
 
 echo "Starting ComfyUI..."
 
 cd $COMFY
 
-$PYTHON main.py \
+exec $PYTHON main.py \
 --listen 0.0.0.0 \
 --port 8188
-
-echo "ComfyUI exited. Keeping container alive..."
-tail -f /dev/null
