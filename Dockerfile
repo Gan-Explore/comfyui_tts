@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     python3.10-venv \
     python3.10-dev \
     python3-pip \
+    nodejs \
+    npm \
     libgl1 \
     libglib2.0-0 \
     libavcodec-dev \
