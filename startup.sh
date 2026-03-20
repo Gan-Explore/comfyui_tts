@@ -3,14 +3,13 @@ set -e
 
 BASE="/workspace/runpod-slim"
 COMFY="$BASE/ComfyUI"
-CUSTOM="$BASE/custom_nodes"
 CACHE="$BASE/model_cache"
 
 PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "========================================="
-echo "AI CREATION STACK BOOT (STABLE v5 DEBUG)"
+echo "AI CREATION STACK BOOT (STABLE v6 CLEAN)"
 echo "========================================="
 
 # -------------------------------------------------
@@ -45,34 +44,24 @@ export HF_HOME=$CACHE/huggingface
 export TRANSFORMERS_CACHE=$CACHE/huggingface
 
 # -------------------------------------------------
-# Install ComfyUI
+# 🔥 CLEAN INSTALL (IMPORTANT FIX)
 # -------------------------------------------------
 
-if [ ! -f "$COMFY/main.py" ]; then
-    echo "Installing ComfyUI..."
-    cd $BASE
-    git clone https://github.com/comfyanonymous/ComfyUI.git || true
+echo "Ensuring clean ComfyUI..."
+
+if [ -d "$COMFY" ]; then
+    echo "Removing corrupted ComfyUI..."
+    rm -rf $COMFY
 fi
 
-# -------------------------------------------------
-# Patch comfy_aimdo (safe)
-# -------------------------------------------------
-
-echo "Patching comfy_aimdo..."
-
-MAIN_FILE="$COMFY/main.py"
-
-if grep -q "comfy_aimdo.control.init()" "$MAIN_FILE"; then
-    sed -i 's/import comfy_aimdo.control/try:\n    import comfy_aimdo.control\n    HAS_AIMDO = True\nexcept ImportError:\n    print("[WARN] comfy_aimdo not found")\n    HAS_AIMDO = False/' "$MAIN_FILE"
-
-    sed -i 's/comfy_aimdo.control.init()/if HAS_AIMDO:\n    comfy_aimdo.control.init()/' "$MAIN_FILE"
-fi
+cd $BASE
+git clone https://github.com/comfyanonymous/ComfyUI.git
 
 # -------------------------------------------------
-# Link folders
+# Link persistent folders
 # -------------------------------------------------
 
-rm -rf $COMFY/{models,custom_nodes,input,output,user} || true
+echo "Linking storage..."
 
 ln -s $BASE/models $COMFY/models
 ln -s $BASE/custom_nodes $COMFY/custom_nodes
@@ -83,6 +72,9 @@ ln -s $BASE/user $COMFY/user
 # -------------------------------------------------
 # Debug info
 # -------------------------------------------------
+
+echo "Python:"
+which python
 
 python -c "import transformers; print('Transformers:', transformers.__version__)"
 
@@ -106,16 +98,16 @@ $JUPYTER lab \
 sleep 3
 
 # -------------------------------------------------
-# 🚨 DEBUG MODE (IMPORTANT)
+# 🚀 Start ComfyUI (PURE, NO PATCHES)
 # -------------------------------------------------
 
-echo "Starting ComfyUI (DEBUG MODE)..."
+echo "Starting ComfyUI..."
 
 cd $COMFY
 
-/opt/comfy_env/bin/python main.py \
+$PYTHON main.py \
 --listen 0.0.0.0 \
 --port 8188
 
-echo "ComfyUI crashed. Keeping container alive..."
+echo "ComfyUI exited. Keeping container alive..."
 tail -f /dev/null
