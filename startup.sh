@@ -27,9 +27,11 @@ rm -rf $COMFY
 cd $BASE
 git clone https://github.com/comfyanonymous/ComfyUI.git
 
-# ✅ FULL FIX (remove ALL comfy_aimdo references safely)
-echo "Removing comfy_aimdo references..."
-sed -i '/comfy_aimdo/d' $COMFY/main.py
+# ✅ SAFE FIX (DO NOT DELETE LINES — replace with pass)
+echo "Fixing comfy_aimdo safely..."
+
+sed -i 's/import comfy_aimdo\.control/pass  # disabled comfy_aimdo/g' $COMFY/main.py
+sed -i 's/comfy_aimdo\.control\.init()/pass  # disabled comfy_aimdo/g' $COMFY/main.py
 
 # Create folders
 mkdir -p $BASE/{models,input,output,custom_nodes}
