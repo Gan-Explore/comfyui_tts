@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "=========================================="
-echo "CLEAN START (STABLE FINAL - NO RECURSION)"
+echo "CLEAN START (FINAL FIX - NO AIMDO)"
 echo "=========================================="
 
 # Fix DNS
@@ -21,78 +21,34 @@ for i in {1..20}; do
     sleep 2
 done
 
-# Clean install ComfyUI
-echo "Installing fresh ComfyUI..."
+# Fresh install
+echo "Installing ComfyUI..."
 rm -rf $COMFY
 cd $BASE
 git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
+# 🚫 REMOVE AIMDO REFERENCES (KEY FIX)
+echo "Removing problematic AIMDO references..."
+
+find . -type f -name "*.py" -exec sed -i '/comfy_aimdo/d' {} +
+
 # Install requirements
-echo "Installing ComfyUI requirements..."
+echo "Installing requirements..."
 
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install -r requirements.txt
 
-# Optional extras
+# Optional deps
 $PYTHON -m pip install \
 opencv-python \
 scikit-image \
 blake3
 
-# 🔥 FIXED comfy_aimdo stub (WITH init, NO recursion)
-echo "Creating safe comfy_aimdo stub..."
-
-mkdir -p /workspace/fake_modules/comfy_aimdo
-
-cat <<EOF > /workspace/fake_modules/comfy_aimdo/__init__.py
-import sys
-import types
-
-class DummyModule(types.ModuleType):
-    def __getattr__(self, name):
-        return DummyObject()
-
-class DummyObject:
-    def __getattr__(self, name):
-        return DummyObject()
-
-    def __call__(self, *args, **kwargs):
-        return None
-
-    def __iter__(self):
-        return iter([])
-
-    def __bool__(self):
-        return False
-
-# Provide safe init
-    def init(self, *args, **kwargs):
-        return None
-
-# Create modules
-base = DummyModule("comfy_aimdo")
-
-control = DummyModule("comfy_aimdo.control")
-control.init = lambda *args, **kwargs: None  # ✅ critical
-
-model_vbar = DummyModule("comfy_aimdo.model_vbar")
-host_buffer = DummyModule("comfy_aimdo.host_buffer")
-
-# Register modules
-sys.modules["comfy_aimdo"] = base
-sys.modules["comfy_aimdo.control"] = control
-sys.modules["comfy_aimdo.model_vbar"] = model_vbar
-sys.modules["comfy_aimdo.host_buffer"] = host_buffer
-EOF
-
-export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
-
-# Create persistent folders
+# Persistent folders
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
-# Link persistent storage
 ln -sfn $BASE/models $COMFY/models
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 ln -sfn $BASE/input $COMFY/input
