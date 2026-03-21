@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "=========================================="
-echo "CLEAN START (ULTIMATE FINAL - NO ERRORS v2)"
+echo "CLEAN START (ULTIMATE FINAL - IMPORT SAFE)"
 echo "=========================================="
 
 # Fix DNS
@@ -41,8 +41,8 @@ opencv-python \
 scikit-image \
 blake3
 
-# 🔥 BULLETPROOF comfy_aimdo FIX
-echo "Creating bulletproof comfy_aimdo stub..."
+# 🔥 IMPORT-SAFE comfy_aimdo FIX (FINAL)
+echo "Creating import-safe comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
 
@@ -53,6 +53,8 @@ import types
 class Dummy(types.ModuleType):
     def __getattr__(self, name):
         fullname = f"{self.__name__}.{name}"
+        if fullname in sys.modules:
+            return sys.modules[fullname]
         mod = Dummy(fullname)
         sys.modules[fullname] = mod
         return mod
@@ -69,9 +71,16 @@ class Dummy(types.ModuleType):
     def __len__(self):
         return 0
 
-# Replace module with dummy instance
+# Base module
 dummy = Dummy("comfy_aimdo")
-sys.modules[__name__] = dummy
+
+# 🔥 CRITICAL: pre-register required submodules
+for sub in ["control", "model_vbar", "host_buffer"]:
+    fullname = f"comfy_aimdo.{sub}"
+    mod = Dummy(fullname)
+    sys.modules[fullname] = mod
+
+sys.modules["comfy_aimdo"] = dummy
 EOF
 
 export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
