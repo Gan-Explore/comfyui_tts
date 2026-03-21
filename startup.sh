@@ -41,7 +41,7 @@ opencv-python \
 scikit-image \
 blake3
 
-# 🔥 SAFE comfy_aimdo stub (NO recursion, NO dynamic behavior)
+# 🔥 FIXED comfy_aimdo stub (WITH init, NO recursion)
 echo "Creating safe comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
@@ -50,9 +50,13 @@ cat <<EOF > /workspace/fake_modules/comfy_aimdo/__init__.py
 import sys
 import types
 
-class Dummy(types.ModuleType):
+class DummyModule(types.ModuleType):
     def __getattr__(self, name):
-        return None  # 🔥 prevent recursion completely
+        return DummyObject()
+
+class DummyObject:
+    def __getattr__(self, name):
+        return DummyObject()
 
     def __call__(self, *args, **kwargs):
         return None
@@ -63,19 +67,24 @@ class Dummy(types.ModuleType):
     def __bool__(self):
         return False
 
-    def __len__(self):
-        return 0
+# Provide safe init
+    def init(self, *args, **kwargs):
+        return None
 
-# Create base module
-dummy = Dummy("comfy_aimdo")
+# Create modules
+base = DummyModule("comfy_aimdo")
 
-# Register ONLY required submodules
-for sub in ["control", "model_vbar", "host_buffer"]:
-    fullname = f"comfy_aimdo.{sub}"
-    mod = Dummy(fullname)
-    sys.modules[fullname] = mod
+control = DummyModule("comfy_aimdo.control")
+control.init = lambda *args, **kwargs: None  # ✅ critical
 
-sys.modules["comfy_aimdo"] = dummy
+model_vbar = DummyModule("comfy_aimdo.model_vbar")
+host_buffer = DummyModule("comfy_aimdo.host_buffer")
+
+# Register modules
+sys.modules["comfy_aimdo"] = base
+sys.modules["comfy_aimdo.control"] = control
+sys.modules["comfy_aimdo.model_vbar"] = model_vbar
+sys.modules["comfy_aimdo.host_buffer"] = host_buffer
 EOF
 
 export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
