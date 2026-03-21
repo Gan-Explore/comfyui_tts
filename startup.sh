@@ -7,9 +7,9 @@ COMFY="$BASE/ComfyUI"
 PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
-echo "=========================================="
+echo "==========================================="
 echo "CLEAN START (FINAL FIX - NO AIMDO)"
-echo "=========================================="
+echo "==========================================="
 
 # Fix DNS
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
