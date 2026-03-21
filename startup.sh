@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "=========================================="
-echo "CLEAN START (ULTIMATE FINAL - IMPORT SAFE)"
+echo "CLEAN START (STABLE FINAL - NO RECURSION)"
 echo "=========================================="
 
 # Fix DNS
@@ -29,7 +29,7 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# Install official requirements
+# Install requirements
 echo "Installing ComfyUI requirements..."
 
 $PYTHON -m pip install --upgrade pip
@@ -41,8 +41,8 @@ opencv-python \
 scikit-image \
 blake3
 
-# 🔥 IMPORT-SAFE comfy_aimdo FIX (FINAL)
-echo "Creating import-safe comfy_aimdo stub..."
+# 🔥 SAFE comfy_aimdo stub (NO recursion, NO dynamic behavior)
+echo "Creating safe comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
 
@@ -52,12 +52,7 @@ import types
 
 class Dummy(types.ModuleType):
     def __getattr__(self, name):
-        fullname = f"{self.__name__}.{name}"
-        if fullname in sys.modules:
-            return sys.modules[fullname]
-        mod = Dummy(fullname)
-        sys.modules[fullname] = mod
-        return mod
+        return None  # 🔥 prevent recursion completely
 
     def __call__(self, *args, **kwargs):
         return None
@@ -71,10 +66,10 @@ class Dummy(types.ModuleType):
     def __len__(self):
         return 0
 
-# Base module
+# Create base module
 dummy = Dummy("comfy_aimdo")
 
-# 🔥 CRITICAL: pre-register required submodules
+# Register ONLY required submodules
 for sub in ["control", "model_vbar", "host_buffer"]:
     fullname = f"comfy_aimdo.{sub}"
     mod = Dummy(fullname)
