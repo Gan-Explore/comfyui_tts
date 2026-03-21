@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "=========================================="
-echo "CLEAN START (ULTIMATE FINAL - NO ERRORS)"
+echo "CLEAN START (ULTIMATE FINAL - NO ERRORS v2)"
 echo "=========================================="
 
 # Fix DNS
@@ -41,8 +41,8 @@ opencv-python \
 scikit-image \
 blake3
 
-# 🔥 UNIVERSAL comfy_aimdo FIX (handles ALL submodules automatically)
-echo "Creating universal comfy_aimdo stub..."
+# 🔥 BULLETPROOF comfy_aimdo FIX
+echo "Creating bulletproof comfy_aimdo stub..."
 
 mkdir -p /workspace/fake_modules/comfy_aimdo
 
@@ -50,14 +50,28 @@ cat <<EOF > /workspace/fake_modules/comfy_aimdo/__init__.py
 import sys
 import types
 
-class DummyModule(types.ModuleType):
+class Dummy(types.ModuleType):
     def __getattr__(self, name):
-        fullname = f"comfy_aimdo.{name}"
-        module = types.ModuleType(fullname)
-        sys.modules[fullname] = module
-        return module
+        fullname = f"{self.__name__}.{name}"
+        mod = Dummy(fullname)
+        sys.modules[fullname] = mod
+        return mod
 
-sys.modules[__name__] = DummyModule(__name__)
+    def __call__(self, *args, **kwargs):
+        return None
+
+    def __iter__(self):
+        return iter([])
+
+    def __bool__(self):
+        return False
+
+    def __len__(self):
+        return 0
+
+# Replace module with dummy instance
+dummy = Dummy("comfy_aimdo")
+sys.modules[__name__] = dummy
 EOF
 
 export PYTHONPATH="/workspace/fake_modules:$PYTHONPATH"
