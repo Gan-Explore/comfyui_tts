@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FINAL STABLE - SAFE PATCH)"
+echo "CLEAN START (FINAL FINAL - SAFE + ROBUST)"
 echo "==========================================="
 
 # Fix DNS
@@ -29,11 +29,43 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# 🔥 SAFE PATCH (ONLY main.py — no breaking indentation)
-echo "Patching main.py to disable comfy_aimdo safely..."
+# 🔥 SAFE GLOBAL PATCH (NO INDENTATION BREAKS)
+echo "Safely removing comfy_aimdo from ALL files..."
 
-sed -i 's/import comfy_aimdo/# disabled comfy_aimdo/g' main.py
-sed -i 's/comfy_aimdo.control.init()/# disabled comfy_aimdo init/g' main.py
+$PYTHON - << 'EOF'
+import os
+
+root = "."
+
+for subdir, dirs, files in os.walk(root):
+    for file in files:
+        if file.endswith(".py"):
+            path = os.path.join(subdir, file)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+
+                new_lines = []
+                modified = False
+
+                for line in lines:
+                    if "comfy_aimdo" in line:
+                        indent = len(line) - len(line.lstrip())
+                        new_lines.append(" " * indent + "pass  # comfy_aimdo removed\n")
+                        modified = True
+                    else:
+                        new_lines.append(line)
+
+                if modified:
+                    with open(path, "w", encoding="utf-8") as f:
+                        f.writelines(new_lines)
+                    print(f"Patched: {path}")
+
+            except Exception as e:
+                print(f"Skipped {path}: {e}")
+
+print("✅ comfy_aimdo fully neutralized")
+EOF
 
 # Install requirements
 echo "Installing requirements..."
