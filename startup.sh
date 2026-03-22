@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FINAL FIX - NO AIMDO)"
+echo "CLEAN START (FINAL STABLE - SAFE PATCH)"
 echo "==========================================="
 
 # Fix DNS
@@ -29,10 +29,11 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# 🚫 REMOVE AIMDO REFERENCES (KEY FIX)
-echo "Removing problematic AIMDO references..."
+# 🔥 SAFE PATCH (ONLY main.py — no breaking indentation)
+echo "Patching main.py to disable comfy_aimdo safely..."
 
-find . -type f -name "*.py" -exec sed -i '/comfy_aimdo/d' {} +
+sed -i 's/import comfy_aimdo/# disabled comfy_aimdo/g' main.py
+sed -i 's/comfy_aimdo.control.init()/# disabled comfy_aimdo init/g' main.py
 
 # Install requirements
 echo "Installing requirements..."
