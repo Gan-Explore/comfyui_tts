@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FINAL FINAL - SAFE + ROBUST)"
+echo "CLEAN START (FINAL — NO PATCH, NO BREAK)"
 echo "==========================================="
 
 # Fix DNS
@@ -29,42 +29,25 @@ git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# 🔥 SAFE GLOBAL PATCH (NO INDENTATION BREAKS)
-echo "Safely removing comfy_aimdo from ALL files..."
+# 🔥 CLEAN FIX: REMOVE ONLY THE IMPORT LINES SAFELY
+echo "Removing comfy_aimdo safely..."
 
 $PYTHON - << 'EOF'
-import os
+import re
 
-root = "."
+file_path = "main.py"
 
-for subdir, dirs, files in os.walk(root):
-    for file in files:
-        if file.endswith(".py"):
-            path = os.path.join(subdir, file)
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    lines = f.readlines()
+with open(file_path, "r", encoding="utf-8") as f:
+    content = f.read()
 
-                new_lines = []
-                modified = False
+# Remove ONLY these exact patterns safely
+content = re.sub(r"^\s*import comfy_aimdo.*\n", "", content, flags=re.MULTILINE)
+content = re.sub(r"^\s*comfy_aimdo\.control\.init\(\).*?\n", "", content, flags=re.MULTILINE)
 
-                for line in lines:
-                    if "comfy_aimdo" in line:
-                        indent = len(line) - len(line.lstrip())
-                        new_lines.append(" " * indent + "pass  # comfy_aimdo removed\n")
-                        modified = True
-                    else:
-                        new_lines.append(line)
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
 
-                if modified:
-                    with open(path, "w", encoding="utf-8") as f:
-                        f.writelines(new_lines)
-                    print(f"Patched: {path}")
-
-            except Exception as e:
-                print(f"Skipped {path}: {e}")
-
-print("✅ comfy_aimdo fully neutralized")
+print("✅ comfy_aimdo safely removed from main.py")
 EOF
 
 # Install requirements
