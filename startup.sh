@@ -8,20 +8,12 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (LATEST — STABLE, NO PATCH)"
+echo "CLEAN START (FIXED STABLE VERSION)"
 echo "==========================================="
 
-# DNS fix
+# Wait a bit for network
 
-echo "nameserver 8.8.8.8" > /etc/resolv.conf
-echo "nameserver 1.1.1.1" >> /etc/resolv.conf
-
-# Wait for internet
-
-for i in {1..20}; do
-ping -c 1 github.com && break
-sleep 2
-done
+sleep 5
 
 # Fresh install
 
@@ -37,15 +29,11 @@ cd ComfyUI
 
 echo "Installing requirements..."
 $PYTHON -m pip install --upgrade pip
-$PYTHON -m pip install -r requirements.txt
+$PYTHON -m pip install --no-cache-dir -r requirements.txt
 
 # Optional deps
 
-$PYTHON -m pip install opencv-python scikit-image blake3
-
-# Optional fallback (safe if not needed)
-
-$PYTHON -m pip install comfy-aimdo || echo "comfy_aimdo not needed"
+$PYTHON -m pip install opencv-python scikit-image blake3 || true
 
 # Persistent folders
 
@@ -55,12 +43,10 @@ ln -sfn $BASE/models $COMFY/models
 ln -sfn $BASE/input $COMFY/input
 ln -sfn $BASE/output $COMFY/output
 
-# ✅ FIX custom_nodes (avoid recursive symlink issue)
+# ✅ Correct custom_nodes linking
 
 rm -rf $COMFY/custom_nodes
-mkdir -p $COMFY/custom_nodes
-rm -rf $COMFY/custom_nodes/custom_nodes 2>/dev/null || true
-ln -sfn $BASE/custom_nodes/* $COMFY/custom_nodes/ 2>/dev/null || true
+ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 # Start Jupyter
 
