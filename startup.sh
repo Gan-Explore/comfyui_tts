@@ -8,7 +8,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (STABLE BUILD — NO PATCH)"
+echo "CLEAN START (LATEST — NO PATCH)"
 echo "==========================================="
 
 # DNS fix
@@ -30,9 +30,6 @@ cd $BASE
 git clone https://github.com/comfyanonymous/ComfyUI.git
 cd ComfyUI
 
-# ✅ PIN TO STABLE COMMIT (CRITICAL)
-git checkout 9f2b9c0
-
 # Install requirements
 echo "Installing requirements..."
 $PYTHON -m pip install --upgrade pip
@@ -40,6 +37,9 @@ $PYTHON -m pip install -r requirements.txt
 
 # Optional deps
 $PYTHON -m pip install opencv-python scikit-image blake3
+
+# (Optional fallback)
+$PYTHON -m pip install comfy-aimdo || echo "comfy_aimdo not needed"
 
 # Persistent folders
 mkdir -p $BASE/{models,input,output,custom_nodes}
