@@ -8,12 +8,25 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FIXED STABLE VERSION)"
+echo "CLEAN START (FINAL STABLE + DNS FIX)"
 echo "==========================================="
 
-# Wait a bit for network
+# 🔥 FIX DNS (CRITICAL)
 
-sleep 5
+echo "Fixing DNS..."
+rm -f /etc/resolv.conf
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+echo "nameserver 1.1.1.1" >> /etc/resolv.conf
+
+# Wait for network to be ready
+
+echo "Waiting for network..."
+until ping -c 1 github.com > /dev/null 2>&1; do
+echo "Still waiting for DNS..."
+sleep 2
+done
+
+echo "Network OK"
 
 # Fresh install
 
@@ -43,12 +56,12 @@ ln -sfn $BASE/models $COMFY/models
 ln -sfn $BASE/input $COMFY/input
 ln -sfn $BASE/output $COMFY/output
 
-# ✅ Correct custom_nodes linking
+# ✅ Clean custom_nodes link (no recursion)
 
 rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
-# Start Jupyter
+# Start Jupyter (FIXED MULTILINE)
 
 echo "Starting Jupyter..."
 cd /workspace
