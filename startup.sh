@@ -9,10 +9,10 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FORCED CLEAN + FIXED)"
+echo "CLEAN START (STABLE + QWEN READY)"
 echo "==========================================="
 
-# DNS fix
+# 🌐 DNS FIX
 
 echo "Fixing DNS..."
 echo "nameserver 8.8.8.8" > /etc/resolv.conf || true
@@ -24,39 +24,28 @@ ping -c 1 github.com > /dev/null 2>&1 && break
 sleep 2
 done
 
-# 🔥 FORCE CLEAN INSTALL (IMPORTANT)
-
-echo "Reinstalling ComfyUI..."
-rm -rf $COMFY
+# 📦 Setup ComfyUI (NO REINSTALL LOOP)
 
 mkdir -p $BASE
 cd $BASE
 
+if [ ! -d "$COMFY" ]; then
+echo "Cloning ComfyUI..."
 git clone https://github.com/comfyanonymous/ComfyUI.git
+else
+echo "ComfyUI already exists, skipping clone"
+fi
 
 cd $COMFY
 
-# Verify critical files
+# 📦 Install requirements (safe)
 
-if [ ! -f "main.py" ]; then
-echo "❌ Clone failed: main.py missing"
-sleep infinity
-fi
-
-if [ ! -f "requirements.txt" ]; then
-echo "❌ Clone failed: requirements.txt missing"
-sleep infinity
-fi
-
-# Install requirements
-
-echo "Installing requirements..."
+echo "Installing ComfyUI requirements..."
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
-
 $PYTHON -m pip install opencv-python scikit-image blake3 || true
 
-# Persistent folders
+# 📁 Persistent dirs
 
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
@@ -67,16 +56,42 @@ ln -sfn $BASE/output $COMFY/output
 rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
-# ✅ FIXED Jupyter (single command)
+# 🔥 Install Qwen-TTS (CRITICAL FIX)
+
+echo "Setting up Qwen-TTS..."
+
+cd $BASE/custom_nodes
+
+if [ ! -d "ComfyUI-Qwen-TTS" ]; then
+echo "Cloning Qwen-TTS nodes..."
+git clone https://github.com/flybirdxx/ComfyUI-Qwen-TTS.git
+fi
+
+cd ComfyUI-Qwen-TTS
+
+echo "Installing Qwen-TTS requirements..."
+$PYTHON -m pip install -r requirements.txt || true
+
+echo "Installing core Qwen-TTS package..."
+$PYTHON -m pip install qwen-tts || true
+
+# 🚀 Start Jupyter
 
 echo "Starting Jupyter..."
 cd /workspace
 
-$JUPYTER lab --notebook-dir=/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.allow_origin='*' --IdentityProvider.token='' &
+$JUPYTER lab 
+--notebook-dir=/workspace 
+--ip=0.0.0.0 
+--port=8888 
+--no-browser 
+--allow-root 
+--ServerApp.allow_origin='*' 
+--IdentityProvider.token='' &
 
 sleep 3
 
-# Start ComfyUI
+# 🚀 Start ComfyUI (no loop)
 
 echo "Starting ComfyUI..."
 cd $COMFY
