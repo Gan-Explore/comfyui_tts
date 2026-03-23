@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# ❌ DO NOT exit on error (prevents restart loop)
-
 set +e
 
 BASE="/workspace/runpod-slim"
@@ -11,55 +9,54 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (LOOP-PROOF + DEBUG MODE)"
+echo "CLEAN START (FORCED CLEAN + FIXED)"
 echo "==========================================="
 
-# 🔧 DNS FIX (safe)
+# DNS fix
 
 echo "Fixing DNS..."
 echo "nameserver 8.8.8.8" > /etc/resolv.conf || true
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf || true
 
-echo "Current DNS:"
-cat /etc/resolv.conf
-
-# 🌐 Wait for network
-
 echo "Waiting for network..."
 for i in {1..20}; do
-if ping -c 1 github.com > /dev/null 2>&1; then
-echo "✅ Network OK"
-break
-fi
-echo "⏳ Waiting..."
+ping -c 1 github.com > /dev/null 2>&1 && break
 sleep 2
 done
 
-# 📦 Install / update ComfyUI (safe)
+# 🔥 FORCE CLEAN INSTALL (IMPORTANT)
 
-echo "Setting up ComfyUI..."
+echo "Reinstalling ComfyUI..."
+rm -rf $COMFY
 
 mkdir -p $BASE
 cd $BASE
 
-if [ ! -d "$COMFY" ]; then
-echo "Cloning ComfyUI..."
-git clone https://github.com/comfyanonymous/ComfyUI.git || echo "⚠️ Clone failed"
-else
-echo "ComfyUI already exists, skipping clone"
-fi
+git clone https://github.com/comfyanonymous/ComfyUI.git
 
 cd $COMFY
 
-# 📦 Install deps (non-fatal)
+# Verify critical files
+
+if [ ! -f "main.py" ]; then
+echo "❌ Clone failed: main.py missing"
+sleep infinity
+fi
+
+if [ ! -f "requirements.txt" ]; then
+echo "❌ Clone failed: requirements.txt missing"
+sleep infinity
+fi
+
+# Install requirements
 
 echo "Installing requirements..."
-$PYTHON -m pip install --upgrade pip || true
-$PYTHON -m pip install --no-cache-dir -r requirements.txt || echo "⚠️ requirements failed"
+$PYTHON -m pip install --upgrade pip
+$PYTHON -m pip install --no-cache-dir -r requirements.txt || true
 
 $PYTHON -m pip install opencv-python scikit-image blake3 || true
 
-# 📁 Persistent dirs
+# Persistent folders
 
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
@@ -70,28 +67,21 @@ ln -sfn $BASE/output $COMFY/output
 rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
-# 🚀 Start Jupyter (fixed line breaks)
+# ✅ FIXED Jupyter (single command)
 
 echo "Starting Jupyter..."
 cd /workspace
 
-$JUPYTER lab 
---notebook-dir=/workspace 
---ip=0.0.0.0 
---port=8888 
---no-browser 
---allow-root 
---ServerApp.allow_origin='*' 
---IdentityProvider.token='' &
+$JUPYTER lab --notebook-dir=/workspace --ip=0.0.0.0 --port=8888 --no-browser --allow-root --ServerApp.allow_origin='*' --IdentityProvider.token='' &
 
 sleep 3
 
-# 🚀 Start ComfyUI (NO exec, NO loop)
+# Start ComfyUI
 
 echo "Starting ComfyUI..."
 cd $COMFY
 
 $PYTHON main.py --listen 0.0.0.0 --port 8188
 
-echo "❌ ComfyUI exited. Container kept alive for debugging."
+echo "❌ ComfyUI exited. Debug mode active."
 sleep infinity
