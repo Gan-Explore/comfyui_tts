@@ -8,10 +8,10 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (FINAL — NO PATCH, NO BREAK)"
+echo "CLEAN START (STABLE BUILD — NO PATCH)"
 echo "==========================================="
 
-# Fix DNS
+# DNS fix
 echo "nameserver 8.8.8.8" > /etc/resolv.conf
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf
 
@@ -24,43 +24,22 @@ done
 # Fresh install
 echo "Installing ComfyUI..."
 rm -rf $COMFY
+mkdir -p $BASE
 cd $BASE
+
 git clone https://github.com/comfyanonymous/ComfyUI.git
+cd ComfyUI
 
-cd $COMFY
-
-# 🔥 CLEAN FIX: REMOVE ONLY THE IMPORT LINES SAFELY
-echo "Removing comfy_aimdo safely..."
-
-$PYTHON - << 'EOF'
-import re
-
-file_path = "main.py"
-
-with open(file_path, "r", encoding="utf-8") as f:
-    content = f.read()
-
-# Remove ONLY these exact patterns safely
-content = re.sub(r"^\s*import comfy_aimdo.*\n", "", content, flags=re.MULTILINE)
-content = re.sub(r"^\s*comfy_aimdo\.control\.init\(\).*?\n", "", content, flags=re.MULTILINE)
-
-with open(file_path, "w", encoding="utf-8") as f:
-    f.write(content)
-
-print("✅ comfy_aimdo safely removed from main.py")
-EOF
+# ✅ PIN TO STABLE COMMIT (CRITICAL)
+git checkout 9f2b9c0
 
 # Install requirements
 echo "Installing requirements..."
-
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install -r requirements.txt
 
 # Optional deps
-$PYTHON -m pip install \
-opencv-python \
-scikit-image \
-blake3
+$PYTHON -m pip install opencv-python scikit-image blake3
 
 # Persistent folders
 mkdir -p $BASE/{models,input,output,custom_nodes}
