@@ -9,7 +9,7 @@ PYTHON="/opt/comfy_env/bin/python"
 JUPYTER="/opt/comfy_env/bin/jupyter"
 
 echo "==========================================="
-echo "CLEAN START (STABLE + TTS ONLY)"
+echo "CLEAN START (STABLE + TTS + WHISPER READY)"
 echo "==========================================="
 
 # 🌐 DNS FIX
@@ -37,10 +37,16 @@ fi
 cd $COMFY
 
 # 📦 Install requirements
-echo "Installing ComfyUI requirements..."
+echo "Installing base dependencies..."
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
 $PYTHON -m pip install opencv-python scikit-image blake3 || true
+
+# 🎙️ Install Whisper + Audio Stack
+echo "Installing audio + transcription dependencies..."
+$PYTHON -m pip install faster-whisper || true
+$PYTHON -m pip install ctranslate2 || true
+$PYTHON -m pip install pydub ffmpeg-python || true
 
 # 📁 Persistent dirs
 mkdir -p $BASE/{models,input,output,custom_nodes}
@@ -77,7 +83,7 @@ $PYTHON -m pip install qwen-tts || true
 echo "Ensuring Jupyter is installed..."
 $PYTHON -m pip install --upgrade jupyterlab notebook ipykernel || true
 
-# 🚀 Start Jupyter (FIXED)
+# 🚀 Start Jupyter
 echo "Starting Jupyter..."
 cd /workspace
 
