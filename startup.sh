@@ -111,7 +111,7 @@ fi
 sleep 3
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
-$PYTHON -m pip install --upgrade torch soundfile librosa numpy omegaconf || true
+$PYTHON -m pip install --upgrade soundfile librosa numpy omegaconf || true
 
 
 # 🚀 Start ComfyUI
