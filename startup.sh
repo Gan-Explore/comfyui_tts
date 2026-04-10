@@ -109,6 +109,8 @@ else
 fi
 
 sleep 3
+export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
+export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
 # 🚀 Start ComfyUI
 echo "Starting ComfyUI..."
