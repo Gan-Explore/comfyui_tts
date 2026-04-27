@@ -28,4 +28,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: docker.io/<your-dockerhub-username>/comfyui_tts:latest
+          tags: docker.io/gandesh/comfyui_tts:latest
