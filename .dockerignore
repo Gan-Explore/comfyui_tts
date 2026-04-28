@@ -2,6 +2,7 @@
 .github
 .gitignore
 README.md
+*.md
 *.log
 *.tmp
 __pycache__
@@ -10,7 +11,9 @@ __pycache__
 venv
 env
 .DS_Store
-*.md
 node_modules
 .vscode
 .idea
+*.tar.gz
+*.zip
+*.whl
