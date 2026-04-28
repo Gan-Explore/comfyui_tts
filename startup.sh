@@ -40,7 +40,7 @@ cd $COMFY
 echo "Installing base dependencies..."
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
-$PYTHON -m pip install opencv-python scikit-image blake3 || true
+$PYTHON -m pip install opencv-python scikit-image blake3 flash-attn || true
 
 # 🎙️ Install Whisper + Audio Stack
 echo "Installing audio + transcription dependencies..."
