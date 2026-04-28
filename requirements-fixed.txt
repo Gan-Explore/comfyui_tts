@@ -24,6 +24,7 @@ ToJyutping==3.2.0
 g2p_en==2.1.0
 g2pM==0.1.2.5
 nltk==3.8.1
+regex==2024.11.6          # <-- ADD THIS LINE (required by nltk)
 
 # Tokenizers and sentence processing
 tokenizers
