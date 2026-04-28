@@ -56,13 +56,38 @@ ck = None
 EOF
 
 # ============================================
-# PATCH 2: Fix NumPy compatibility in utils.py
+# PATCH 2: Fix NumPy compatibility
 # ============================================
 echo "Patching ComfyUI for NumPy 1.x compatibility..."
 
-# Fix the numpy.dtypes import issue
 if [ -f "comfy/utils.py" ]; then
   sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' comfy/utils.py
+fi
+
+# ============================================
+# PATCH 3: Fix torch.serialization compatibility for PyTorch 2.2.0
+# ============================================
+echo "Patching ComfyUI for PyTorch 2.2.0 compatibility..."
+
+# Create a wrapper to add add_safe_globals if it doesn't exist
+cat > comfy/safe_globals_patch.py << 'EOF'
+# Patch for torch.serialization.add_safe_globals in PyTorch 2.2.0
+import torch
+
+if not hasattr(torch.serialization, 'add_safe_globals'):
+    def add_safe_globals(globals_list):
+        # Do nothing - this is a no-op for older PyTorch versions
+        pass
+    torch.serialization.add_safe_globals = add_safe_globals
+    print("Patched: added torch.serialization.add_safe_globals for PyTorch 2.2.0")
+EOF
+
+# Import the patch at the beginning of main.py
+sed -i '1iimport comfy.safe_globals_patch' main.py
+
+# Also patch utils.py if needed
+if [ -f "comfy/utils.py" ]; then
+  sed -i '1iimport comfy.safe_globals_patch' comfy/utils.py
 fi
 
 # ============================================
@@ -131,8 +156,6 @@ export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Sing
 echo "Verifying environment..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-
-# Test the numpy fix
 $PYTHON -c "from comfy.utils import *; print('ComfyUI utils imported successfully')"
 
 # ============================================
