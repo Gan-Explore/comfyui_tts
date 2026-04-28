@@ -26,13 +26,16 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 # Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install pinned versions
+# Install NumPy 1.24.4
 RUN pip install --no-cache-dir --no-deps numpy==1.24.4
+
+# Install PyTorch 2.2.0 with CUDA 11.8
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
-RUN pip install --no-cache-dir --no-deps comfy-kitchen==0.2.3
 
-# Install core packages
+# DO NOT INSTALL comfy-kitchen - it will be patched out at runtime
+
+# Install other dependencies
 RUN pip install --no-cache-dir \
     opencv-python==4.8.1.78 \
     scikit-image==0.21.0 \
@@ -48,19 +51,14 @@ RUN pip install --no-cache-dir \
     g2pM==0.1.2.5 \
     nltk==3.8.1 \
     regex==2024.11.6 \
-    demucs
-
-# Install Jupyter and dependencies
-RUN pip install --no-cache-dir \
-    jupyter jupyterlab ipykernel notebook \
-    traitlets tornado jupyter-core jupyter-server
+    demucs \
+    jupyter jupyterlab ipykernel notebook
 
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger')"
 
-# Force reinstall pinned versions
+# Final NumPy pin
 RUN pip install --no-cache-dir --force-reinstall --no-deps numpy==1.24.4
-RUN pip install --no-cache-dir --force-reinstall --no-deps comfy-kitchen==0.2.3
 
 # Clean up
 RUN rm -rf /root/.cache/pip
