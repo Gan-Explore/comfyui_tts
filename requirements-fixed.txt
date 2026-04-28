@@ -1,65 +1,14 @@
-# ============================================
-# SOULX-SINGER DEPENDENCIES
-# NOTE: numpy and comfy-kitchen are NOT listed here
-# They are pinned in the Dockerfile directly
-# ============================================
-
-# Core audio processing
+# Only core dependencies - comfy-kitchen and numpy are handled in Dockerfile
 soundfile==0.12.1
 scipy==1.14.1
 librosa==0.10.2
 omegaconf==2.3.0
-
-# Hugging Face ecosystem
-huggingface_hub==0.23.0
-safetensors==0.4.5
-accelerate==0.33.0
 transformers==4.36.2
-
-# ML utilities
+accelerate==0.33.0
 einops==0.8.0
-
-# Text processing (Chinese & English phonemes)
 ToJyutping==3.2.0
 g2p_en==2.1.0
 g2pM==0.1.2.5
 nltk==3.8.1
-regex==2024.11.6          # <-- ADD THIS LINE (required by nltk)
-
-# Tokenizers and sentence processing
-tokenizers
-sentencepiece
-
-# Database and async
-sqlalchemy
-alembic
-aiohttp
-
-# Audio/Video handling
-av
-gitpython
-toml
-
-# Progress bars and system utilities
-tqdm
-psutil
-
-# Image and video processing
-blake3
-kornia
-spandrel
-pydantic
-PyOpenGL
-glfw
-
-# Jupyter notebook support
-jupyter
-jupyterlab
-ipykernel
-
-# Additional utilities
-packaging
-six
-pyyaml
-requests
-pillow
+regex==2024.11.6
+demucs
