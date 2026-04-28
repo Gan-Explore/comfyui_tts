@@ -1,35 +1,49 @@
 # ============================================
-# CRITICAL: PINNED VERSIONS - DO NOT MODIFY
-# These versions are compatible with PyTorch 2.2.0
+# SOULX-SINGER DEPENDENCIES
+# NOTE: numpy and comfy-kitchen are NOT listed here
+# They are pinned in the Dockerfile directly
 # ============================================
 
-# Core dependencies (pinned versions)
+# Core audio processing
 soundfile==0.12.1
 scipy==1.14.1
 librosa==0.10.2
 omegaconf==2.3.0
+
+# Hugging Face ecosystem
 huggingface_hub==0.23.0
 safetensors==0.4.5
 accelerate==0.33.0
+transformers==4.36.2
+
+# ML utilities
 einops==0.8.0
+
+# Text processing (Chinese & English phonemes)
 ToJyutping==3.2.0
 g2p_en==2.1.0
 g2pM==0.1.2.5
 nltk==3.8.1
-demucs
-transformers==4.36.2
 
-# Audio and ML dependencies
+# Tokenizers and sentence processing
 tokenizers
 sentencepiece
+
+# Database and async
 sqlalchemy
 alembic
 aiohttp
+
+# Audio/Video handling
 av
 gitpython
 toml
+
+# Progress bars and system utilities
 tqdm
 psutil
+
+# Image and video processing
 blake3
 kornia
 spandrel
@@ -37,10 +51,14 @@ pydantic
 PyOpenGL
 glfw
 
-# Jupyter and notebook support
+# Jupyter notebook support
 jupyter
 jupyterlab
 ipykernel
 
-# Note: comfy-kitchen and numpy are pinned in Dockerfile, not here
-# to ensure they are installed BEFORE other dependencies
+# Additional utilities
+packaging
+six
+pyyaml
+requests
+pillow
