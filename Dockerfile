@@ -31,7 +31,7 @@ RUN pip install torch torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Now install Flash Attention
-RUN pip install flash-attn --no-build-isolation    
+# RUN pip install flash-attn --no-build-isolation    
 
 # Core libs
 RUN pip install \
