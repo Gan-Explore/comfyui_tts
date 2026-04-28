@@ -22,14 +22,14 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 
 RUN pip install --upgrade pip
 
-# CRITICAL: Install NumPy FIRST with a compatible version
-RUN pip install numpy==1.24.4
+# 🔥 CRITICAL: Install NumPy 1.x FIRST and PIN it
+RUN pip install "numpy==1.24.4"
 
 # PyTorch 2.2.0 with CUDA 11.8
 RUN pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Core dependencies (minimal set)
+# Install other dependencies (NumPy is already pinned)
 RUN pip install \
     soundfile \
     scipy \
@@ -58,6 +58,9 @@ RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_pe
 
 # Test NumPy and PyTorch integration
 RUN python -c "import numpy as np; import torch; print(f'NumPy: {np.__version__}'); print(f'PyTorch: {torch.__version__}'); print(f'CUDA Available: {torch.cuda.is_available()}')"
+
+# Pin NumPy again to prevent accidental upgrades
+RUN pip install "numpy<2.0.0" --force-reinstall
 
 # Cache directories
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
