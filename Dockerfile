@@ -1,4 +1,5 @@
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+#FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -28,6 +29,9 @@ RUN pip install --upgrade pip setuptools wheel
 # PyTorch (CUDA 12.4)
 RUN pip install torch torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu124
+
+# Now install Flash Attention
+RUN pip install flash-attn --no-build-isolation    
 
 # Core libs
 RUN pip install \
