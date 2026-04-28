@@ -31,9 +31,6 @@ RUN pip install --upgrade pip setuptools wheel
 RUN pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Flash Attention for RTX 4090 (works with CUDA 11.8)
-RUN pip install flash-attn --no-build-isolation
-
 # Install numpy 1.x (required for compatibility)
 RUN pip install "numpy<2.0.0"
 
