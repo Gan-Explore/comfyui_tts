@@ -12,7 +12,7 @@ echo "==========================================="
 echo "CLEAN START (STABLE + TTS + WHISPER READY)"
 echo "==========================================="
 
-# 🌐 DNS FIX
+# DNS FIX
 echo "Fixing DNS..."
 echo "nameserver 8.8.8.8" > /etc/resolv.conf || true
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf || true
@@ -23,7 +23,7 @@ for i in {1..20}; do
   sleep 2
 done
 
-# 📦 Setup ComfyUI
+# Setup ComfyUI
 mkdir -p $BASE
 cd $BASE
 
@@ -36,24 +36,27 @@ fi
 
 cd $COMFY
 
-# 🔥 CRITICAL FIX: Force NumPy 1.x before anything else
-echo "Fixing NumPy version (Critical for PyTorch compatibility)..."
-$PYTHON -m pip uninstall numpy -y
-$PYTHON -m pip install "numpy<2.0.0" --force-reinstall
+# CRITICAL FIX: Force NumPy 1.x
+echo "Fixing NumPy version..."
+$PYTHON -m pip uninstall numpy -y 2>/dev/null
+$PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
 
-# 📦 Install requirements
+# Pin comfy-kitchen to compatible version
+$PYTHON -m pip install comfy-kitchen==0.2.3 --force-reinstall
+
+# Install base requirements
 echo "Installing base dependencies..."
 $PYTHON -m pip install --upgrade pip
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
-$PYTHON -m pip install opencv-python scikit-image blake3 || true
 
-# 🎙️ Install Whisper + Audio Stack
+# Install compatible versions of opencv and scikit-image
+$PYTHON -m pip install opencv-python==4.8.1.78 scikit-image==0.21.0 blake3 --force-reinstall --no-deps || true
+
+# Install audio + transcription dependencies
 echo "Installing audio + transcription dependencies..."
-$PYTHON -m pip install faster-whisper || true
-$PYTHON -m pip install ctranslate2 || true
-$PYTHON -m pip install pydub ffmpeg-python || true
+$PYTHON -m pip install faster-whisper ctranslate2 pydub ffmpeg-python || true
 
-# 📁 Persistent dirs
+# Persistent dirs
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
 ln -sfn $BASE/models $COMFY/models
@@ -63,10 +66,10 @@ ln -sfn $BASE/output $COMFY/output
 rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
-# 🧹 REMOVE QWEN OMNI (IMPORTANT)
+# REMOVE QWEN OMNI
 rm -rf $BASE/custom_nodes/ComfyUI-Qwen-Omni || true
 
-# 🔥 Install Qwen-TTS
+# Setup Qwen-TTS
 echo "Setting up Qwen-TTS..."
 
 cd $BASE/custom_nodes
@@ -84,11 +87,11 @@ $PYTHON -m pip install -r requirements.txt || true
 echo "Installing core Qwen-TTS package..."
 $PYTHON -m pip install qwen-tts || true
 
-# 🧠 Ensure Jupyter exists
+# Install Jupyter
 echo "Ensuring Jupyter is installed..."
 $PYTHON -m pip install --upgrade jupyterlab notebook ipykernel || true
 
-# 🚀 Start Jupyter
+# Start Jupyter
 echo "Starting Jupyter..."
 cd /workspace
 
@@ -102,7 +105,6 @@ if [ -x "$JUPYTER" ]; then
     --ServerApp.allow_origin='*' \
     --IdentityProvider.token='' &
 else
-  echo "⚠️ Using python fallback for Jupyter"
   $PYTHON -m jupyter lab \
     --notebook-dir=/workspace \
     --ip=0.0.0.0 \
@@ -114,22 +116,30 @@ else
 fi
 
 sleep 3
+
+# Set environment variables
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
-# Install additional packages WITHOUT breaking NumPy
+# Install additional packages
 $PYTHON -m pip install --upgrade soundfile librosa omegaconf funasr torchcodec || true
 
-# 🔥 VERIFY NumPy version before starting ComfyUI
+# FINAL CRITICAL FIX: Force NumPy 1.x again at the VERY END
+echo "FINAL: Forcing NumPy 1.x..."
+$PYTHON -m pip uninstall numpy -y 2>/dev/null
+$PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
+
+# Verify NumPy version
 echo "Verifying NumPy version..."
 $PYTHON -c "import numpy; print(f'NumPy version: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+$PYTHON -c "import comfy_kitchen; print(f'comfy-kitchen version loaded')"
 
-# 🚀 Start ComfyUI
+# Start ComfyUI
 echo "Starting ComfyUI..."
 cd $COMFY
 
 $PYTHON main.py --listen 0.0.0.0 --port 8188
 
-echo "❌ ComfyUI exited. Debug mode active."
+echo "ComfyUI exited. Debug mode active."
 sleep infinity
