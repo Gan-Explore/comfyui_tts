@@ -27,6 +27,9 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 
 RUN pip install --upgrade pip setuptools wheel
 
+# Install psutil (required for some builds)
+RUN pip install psutil
+
 # PyTorch 2.2.0 with CUDA 11.8 (compatible with all SoulX-Singer requirements)
 RUN pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
@@ -37,48 +40,66 @@ RUN pip install "numpy<2.0.0"
 # Install vocal separation (CRITICAL for VocalSeparator error)
 RUN pip install demucs
 
-# Install ALL SoulX-Singer dependencies from your requirements
+# Install dependencies in groups to avoid conflicts
+# Group 1: Core audio processing
 RUN pip install \
-    soundfile==0.13.1 \
-    scipy==1.15.3 \
-    librosa==0.11.0 \
-    omegaconf==2.3.0 \
-    huggingface_hub>=0.20.0 \
-    safetensors>=0.4.0 \
-    accelerate==1.11.0 \
-    einops==0.8.2 \
-    rotary_embedding_torch==0.8.9 \
+    soundfile==0.12.1 \
+    scipy==1.14.1 \
+    librosa==0.10.2 \
+    omegaconf==2.3.0
+
+# Group 2: Hugging Face and ML core
+RUN pip install \
+    huggingface_hub==0.23.0 \
+    safetensors==0.4.5 \
+    accelerate==0.33.0 \
+    einops==0.8.0
+
+# Group 3: Text processing (these work well together)
+RUN pip install \
     ToJyutping==3.2.0 \
     g2p_en==2.1.0 \
     g2pM==0.1.2.5 \
-    funasr==1.3.0 \
-    nemo_toolkit[asr]==2.6.1 \
-    fiddle>=0.3.0 \
-    cloudpickle>=2.0.0 \
+    nltk==3.8.1
+
+# Group 4: Install transformers WITHOUT conflicting with nemo
+RUN pip install transformers==4.36.2
+
+# Group 5: Install NeMo with compatible dependencies
+RUN pip install nemo_toolkit[asr]==1.23.0
+
+# Group 6: Audio analysis and processing
+RUN pip install \
     praat-parselmouth==0.4.7 \
     pyworld==0.3.5 \
     webrtcvad==2.0.10 \
-    beartype==0.22.9 \
-    transformers==4.41.2 \
-    tqdm>=4.67.0 \
-    wandb>=0.15.0 \
-    pretty_midi==0.2.11 \
-    ml-collections==1.1.0 \
-    loralib==0.1.2 \
-    gradio==6.3.0 \
-    matplotlib==3.10.8 \
-    mido==1.3.3 \
-    numba==0.63.1 \
-    scikit-learn==1.7.2 \
-    scikit-image==0.25.2 \
     pyloudnorm==0.2.0 \
-    nltk==3.9.2 \
-    packaging==24.2 \
-    six==1.17.0
+    pretty_midi==0.2.11
 
-# Additional core libraries
+# Group 7: Utilities and visualization
 RUN pip install \
-    tokenizers==0.19.1 \
+    tqdm \
+    wandb \
+    gradio==4.44.1 \
+    matplotlib \
+    mido \
+    numba \
+    scikit-learn \
+    scikit-image \
+    beartype \
+    packaging \
+    six
+
+# Group 8: LoRA and configuration
+RUN pip install \
+    loralib==0.1.2 \
+    ml-collections \
+    fiddle \
+    cloudpickle
+
+# Group 9: Additional libraries
+RUN pip install \
+    tokenizers \
     sentencepiece \
     sqlalchemy \
     alembic \
@@ -88,8 +109,10 @@ RUN pip install \
     ipykernel \
     av \
     gitpython \
-    toml \
-    torchcodec==0.10.0
+    toml
+
+# Note: funasr is optional and often causes conflicts - skip it for now
+# If you need it, install separately: pip install funasr
 
 # Download NLTK data (required for g2p_en)
 RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger')"
