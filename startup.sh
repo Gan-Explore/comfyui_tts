@@ -37,31 +37,36 @@ fi
 cd $COMFY
 
 # ============================================
-# CRITICAL: Patch ComfyUI to remove comfy-kitchen dependency
+# PATCH 1: Remove comfy-kitchen dependency
 # ============================================
 echo "Patching ComfyUI to bypass comfy-kitchen..."
-
-# Remove comfy-kitchen from requirements.txt
 sed -i '/comfy-kitchen/d' requirements.txt
 
-# Patch memory_management.py to skip comfy-kitchen
 if [ -f "comfy/memory_management.py" ]; then
   sed -i 's/from comfy.quant_ops import QuantizedTensor/# from comfy.quant_ops import QuantizedTensor/g' comfy/memory_management.py
 fi
 
-# Create a dummy quant_ops.py that doesn't need comfy-kitchen
 cat > comfy/quant_ops.py << 'EOF'
 # Dummy quant_ops.py - replaces comfy-kitchen dependency
 class QuantizedTensor:
     """Dummy QuantizedTensor class to replace comfy-kitchen"""
     pass
 
-# Export as ck for compatibility
 ck = None
 EOF
 
 # ============================================
-# Install NumPy 1.24.4 ONLY
+# PATCH 2: Fix NumPy compatibility in utils.py
+# ============================================
+echo "Patching ComfyUI for NumPy 1.x compatibility..."
+
+# Fix the numpy.dtypes import issue
+if [ -f "comfy/utils.py" ]; then
+  sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' comfy/utils.py
+fi
+
+# ============================================
+# Install NumPy 1.24.4
 # ============================================
 echo "Installing NumPy 1.24.4..."
 $PYTHON -m pip uninstall numpy comfy-kitchen -y 2>/dev/null
@@ -126,6 +131,9 @@ export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Sing
 echo "Verifying environment..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
+
+# Test the numpy fix
+$PYTHON -c "from comfy.utils import *; print('ComfyUI utils imported successfully')"
 
 # ============================================
 # Start ComfyUI
