@@ -48,6 +48,10 @@ $PYTHON -m pip install faster-whisper || true
 $PYTHON -m pip install ctranslate2 || true
 $PYTHON -m pip install pydub ffmpeg-python || true
 
+# 🎙️ Install flash-attn
+echo "Installing flash-attn..."
+$PYTHON -m pip install flash-attn || true
+
 # 📁 Persistent dirs
 mkdir -p $BASE/{models,input,output,custom_nodes}
 
