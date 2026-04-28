@@ -36,6 +36,11 @@ fi
 
 cd $COMFY
 
+# 🔥 CRITICAL FIX: Force NumPy 1.x before anything else
+echo "Fixing NumPy version (Critical for PyTorch compatibility)..."
+$PYTHON -m pip uninstall numpy -y
+$PYTHON -m pip install "numpy<2.0.0" --force-reinstall
+
 # 📦 Install requirements
 echo "Installing base dependencies..."
 $PYTHON -m pip install --upgrade pip
@@ -47,10 +52,6 @@ echo "Installing audio + transcription dependencies..."
 $PYTHON -m pip install faster-whisper || true
 $PYTHON -m pip install ctranslate2 || true
 $PYTHON -m pip install pydub ffmpeg-python || true
-
-# 🎙️ Install flash-attn
-echo "Not Installing flash-attn..."
-# $PYTHON -m pip install flash-attn || true
 
 # 📁 Persistent dirs
 mkdir -p $BASE/{models,input,output,custom_nodes}
@@ -115,8 +116,14 @@ fi
 sleep 3
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
+
+# Install additional packages WITHOUT breaking NumPy
 $PYTHON -m pip install --upgrade soundfile librosa omegaconf funasr torchcodec || true
 
+# 🔥 VERIFY NumPy version before starting ComfyUI
+echo "Verifying NumPy version..."
+$PYTHON -c "import numpy; print(f'NumPy version: {numpy.__version__}')"
+$PYTHON -c "import torch; print(f'PyTorch version: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
 
 # 🚀 Start ComfyUI
 echo "Starting ComfyUI..."
