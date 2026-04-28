@@ -67,7 +67,7 @@ RUN pip install --no-cache-dir --force-reinstall --no-deps numpy==1.24.4
 RUN pip install --no-cache-dir --force-reinstall --no-deps comfy-kitchen==0.2.3
 
 # ============================================
-# STEP 4: Download NLTK data
+# STEP 4: Download NLTK data (regex is now installed)
 # ============================================
 RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger')"
 
