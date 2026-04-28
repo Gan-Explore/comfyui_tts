@@ -49,8 +49,8 @@ $PYTHON -m pip install ctranslate2 || true
 $PYTHON -m pip install pydub ffmpeg-python || true
 
 # 🎙️ Install flash-attn
-echo "Installing flash-attn..."
-$PYTHON -m pip install flash-attn || true
+echo "Not Installing flash-attn..."
+# $PYTHON -m pip install flash-attn || true
 
 # 📁 Persistent dirs
 mkdir -p $BASE/{models,input,output,custom_nodes}
@@ -115,7 +115,7 @@ fi
 sleep 3
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
-$PYTHON -m pip install --upgrade soundfile librosa numpy omegaconf funasr torchcodec || true
+$PYTHON -m pip install --upgrade soundfile librosa omegaconf funasr torchcodec || true
 
 
 # 🚀 Start ComfyUI
