@@ -12,7 +12,7 @@ echo "==========================================="
 echo "STARTING TTS LAB (SoulX-Singer Ready)"
 echo "==========================================="
 
-# DNS fix for better connectivity
+# DNS fix
 echo "nameserver 8.8.8.8" > /etc/resolv.conf || true
 echo "nameserver 1.1.1.1" >> /etc/resolv.conf || true
 
@@ -37,47 +37,59 @@ fi
 cd $COMFY
 
 # ============================================
-# CRITICAL: Patch requirements.txt to remove comfy-kitchen
+# CRITICAL: Patch ComfyUI to remove comfy-kitchen dependency
 # ============================================
-echo "Patching ComfyUI requirements.txt to remove comfy-kitchen..."
+echo "Patching ComfyUI to bypass comfy-kitchen..."
+
+# Remove comfy-kitchen from requirements.txt
 sed -i '/comfy-kitchen/d' requirements.txt
 
-# ============================================
-# Force pinned versions FIRST
-# ============================================
-echo "Installing pinned versions..."
+# Patch memory_management.py to skip comfy-kitchen
+if [ -f "comfy/memory_management.py" ]; then
+  sed -i 's/from comfy.quant_ops import QuantizedTensor/# from comfy.quant_ops import QuantizedTensor/g' comfy/memory_management.py
+fi
 
+# Create a dummy quant_ops.py that doesn't need comfy-kitchen
+cat > comfy/quant_ops.py << 'EOF'
+# Dummy quant_ops.py - replaces comfy-kitchen dependency
+class QuantizedTensor:
+    """Dummy QuantizedTensor class to replace comfy-kitchen"""
+    pass
+
+# Export as ck for compatibility
+ck = None
+EOF
+
+# ============================================
+# Install NumPy 1.24.4 ONLY
+# ============================================
+echo "Installing NumPy 1.24.4..."
 $PYTHON -m pip uninstall numpy comfy-kitchen -y 2>/dev/null
 $PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
-$PYTHON -m pip install comfy-kitchen==0.2.3 --force-reinstall --no-deps
 
 # ============================================
-# Install ComfyUI requirements (now without comfy-kitchen)
+# Install ComfyUI requirements
 # ============================================
 echo "Installing ComfyUI requirements..."
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
 
 # ============================================
-# Re-pin after requirements
+# Reinstall NumPy (in case it got upgraded)
 # ============================================
-$PYTHON -m pip uninstall numpy comfy-kitchen -y 2>/dev/null
+$PYTHON -m pip uninstall numpy -y 2>/dev/null
 $PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
-$PYTHON -m pip install comfy-kitchen==0.2.3 --force-reinstall --no-deps
 
 # ============================================
-# Install compatible opencv and scikit-image
+# Install other dependencies
 # ============================================
+echo "Installing additional dependencies..."
 $PYTHON -m pip install opencv-python==4.8.1.78 scikit-image==0.21.0 --force-reinstall --no-deps || true
 
-# ============================================
-# Install Jupyter and dependencies manually
-# ============================================
-echo "Installing Jupyter..."
-$PYTHON -m pip install jupyter jupyterlab ipykernel notebook --no-deps || true
-$PYTHON -m pip install traitlets tornado jupyter-core jupyter-server --no-deps || true
+# Install Jupyter
+$PYTHON -m pip install jupyter jupyterlab ipykernel notebook || true
 
 # ============================================
-# Setup directory symlinks
+# Setup symlinks
 # ============================================
 mkdir -p $BASE/{models,input,output,custom_nodes}
 ln -sfn $BASE/models $COMFY/models
@@ -87,27 +99,23 @@ rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 # ============================================
-# Start Jupyter Lab (if available)
+# Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
 cd /workspace
-if $PYTHON -c "import jupyter" 2>/dev/null; then
-  $PYTHON -m jupyter lab \
-    --notebook-dir=/workspace \
-    --ip=0.0.0.0 \
-    --port=8888 \
-    --no-browser \
-    --allow-root \
-    --ServerApp.allow_origin='*' \
-    --IdentityProvider.token='' &
-else
-  echo "Jupyter not available, skipping..."
-fi
+$PYTHON -m jupyter lab \
+  --notebook-dir=/workspace \
+  --ip=0.0.0.0 \
+  --port=8888 \
+  --no-browser \
+  --allow-root \
+  --ServerApp.allow_origin='*' \
+  --IdentityProvider.token='' &
 
 sleep 3
 
 # ============================================
-# Set environment variables
+# Environment variables
 # ============================================
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
@@ -115,10 +123,9 @@ export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Sing
 # ============================================
 # Final verification
 # ============================================
-echo "Verifying runtime environment..."
+echo "Verifying environment..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-$PYTHON -c "import comfy_kitchen; print(f'comfy-kitchen: {comfy_kitchen.__version__}')"
 
 # ============================================
 # Start ComfyUI
