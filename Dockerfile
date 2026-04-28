@@ -1,5 +1,5 @@
-#FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
-FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
+# Use CUDA 11.8 for maximum compatibility with all SoulX-Singer dependencies
+FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -27,20 +27,20 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 
 RUN pip install --upgrade pip setuptools wheel
 
-# PyTorch (CUDA 12.4) - Using version 2.2.0 for compatibility
+# PyTorch 2.2.0 with CUDA 11.8 (compatible with all SoulX-Singer requirements)
 RUN pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
-    --index-url https://download.pytorch.org/whl/cu124
+    --index-url https://download.pytorch.org/whl/cu118
 
-# Flash Attention (optional but recommended for RTX 4090)
+# Flash Attention for RTX 4090 (works with CUDA 11.8)
 RUN pip install flash-attn --no-build-isolation
 
-# Core audio processing and vocal separation (CRITICAL for SoulX-Singer)
-RUN pip install demucs spleeter
-
-# SoulX-Singer specific requirements
+# Install numpy 1.x (required for compatibility)
 RUN pip install "numpy<2.0.0"
 
-# Install all SoulX-Singer dependencies
+# Install vocal separation (CRITICAL for VocalSeparator error)
+RUN pip install demucs
+
+# Install ALL SoulX-Singer dependencies from your requirements
 RUN pip install \
     soundfile==0.13.1 \
     scipy==1.15.3 \
@@ -79,7 +79,7 @@ RUN pip install \
     packaging==24.2 \
     six==1.17.0
 
-# Additional core libs
+# Additional core libraries
 RUN pip install \
     tokenizers==0.19.1 \
     sentencepiece \
@@ -92,13 +92,12 @@ RUN pip install \
     av \
     gitpython \
     toml \
-    einops \
     torchcodec==0.10.0
 
 # Download NLTK data (required for g2p_en)
 RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger')"
 
-# Cache directories
+# Set cache directories
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
 ENV TRANSFORMERS_CACHE=/workspace/runpod-slim/model_cache/huggingface
 ENV NLTK_DATA=/workspace/runpod-slim/nltk_data
