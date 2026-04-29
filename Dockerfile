@@ -63,7 +63,7 @@ RUN pip install --no-cache-dir --force-reinstall --no-deps numpy==1.24.4
 RUN rm -rf /root/.cache/pip
 
 # Create base directory structure
-RUN mkdir -p /workspace/runpod-slim/{models,input,output,custom_nodes}
+# RUN mkdir -p /workspace/runpod-slim
 
 # Environment variables
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
