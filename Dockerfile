@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.
     --index-url https://download.pytorch.org/whl/cu118
 
 # Create directory structure
-RUN mkdir -p /workspace/runpod-slim
+RUN mkdir -p /workspace/runpod-slim/ComfyUI
 
 # Clone ComfyUI to the correct path
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
