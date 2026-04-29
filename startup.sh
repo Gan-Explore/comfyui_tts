@@ -110,6 +110,11 @@ cd $COMFY
 export SOULX_SINGER_ROOT=$COMFY/pretrained_models
 export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
+
+# Kill any existing process on port 8188
+fuser -k 8188/tcp 2>/dev/null || true
+
+# Start ComfyUI with correct bindings
 python main.py --listen 0.0.0.0 --port 8188
 
 sleep infinity
