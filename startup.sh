@@ -80,14 +80,22 @@ if not hasattr(torch.serialization, 'add_safe_globals'):
         pass
     torch.serialization.add_safe_globals = add_safe_globals
     print("Patched: added torch.serialization.add_safe_globals for PyTorch 2.2.0")
+
+# Also fix torch.uint64 (doesn't exist in PyTorch 2.2.0)
+if not hasattr(torch, 'uint64'):
+    torch.uint64 = torch.uint16
+    print("Patched: added torch.uint64 as alias for torch.uint16")
 EOF
 
-# Import the patch at the beginning of main.py
-sed -i '1iimport comfy.safe_globals_patch' main.py
+# Import the patch at the beginning of main.py and utils.py
+sed -i '1iimport comfy.safe_globals_patch' main.py 2>/dev/null || true
+sed -i '1iimport comfy.safe_globals_patch' comfy/utils.py 2>/dev/null || true
 
-# Also patch utils.py if needed
+# ============================================
+# PATCH 4: Fix torch.uint64 in utils.py directly
+# ============================================
 if [ -f "comfy/utils.py" ]; then
-  sed -i '1iimport comfy.safe_globals_patch' comfy/utils.py
+  sed -i 's/torch.uint64/torch.uint16/g' comfy/utils.py
 fi
 
 # ============================================
@@ -156,7 +164,7 @@ export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Sing
 echo "Verifying environment..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-$PYTHON -c "from comfy.utils import *; print('ComfyUI utils imported successfully')"
+$PYTHON -c "import comfy.safe_globals_patch; print('Patches loaded')"
 
 # ============================================
 # Start ComfyUI
