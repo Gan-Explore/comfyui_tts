@@ -22,7 +22,7 @@ $VENV_PYTHON --version
 # ============================================
 echo "Setting up directory structure..."
 mkdir -p $BASE
-mkdir -p $BASE/{models,input,output,custom_nodes}
+# mkdir -p $BASE/{models,input,output,custom_nodes}
 
 # ============================================
 # STEP 2: Clone ComfyUI if not exists
@@ -72,15 +72,15 @@ if not hasattr(torch.serialization, 'add_safe_globals'):
 # Patch 2: Add all missing uint dtypes (map to closest available)
 uint_mappings = {
     'uint8': torch.uint8,
-    'uint16': torch.uint8,   # uint16 doesn't exist, map to uint8
-    'uint32': torch.uint8,   # uint32 doesn't exist, map to uint8
-    'uint64': torch.uint8,   # uint64 doesn't exist, map to uint8
+    'uint16': torch.uint8,
+    'uint32': torch.uint8,
+    'uint64': torch.uint8,
 }
 
 for name, value in uint_mappings.items():
     if not hasattr(torch, name):
         setattr(torch, name, value)
-        print(f"✓ Patched torch.{name} -> torch.{value}")
+        print(f"✓ Patched torch.{name} -> torch.uint8")
 
 # Patch 3: Add missing float8 dtypes
 if not hasattr(torch, 'float8_e4m3fn'):
@@ -97,7 +97,21 @@ if ! grep -q "pytorch_compat" $COMFY/main.py; then
 fi
 
 # ============================================
-# STEP 5: Fix ComfyUI requirements BEFORE installing
+# STEP 5: PATCH numpy.dtypes in utils.py
+# ============================================
+echo "Patching numpy.dtypes import in utils.py..."
+
+if [ -f "$COMFY/comfy/utils.py" ]; then
+    # Replace the problematic import
+    sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
+    echo "✓ Patched numpy.dtypes import"
+fi
+
+# Also patch any other files that might have this issue
+find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \; 2>/dev/null || true
+
+# ============================================
+# STEP 6: Fix ComfyUI requirements BEFORE installing
 # ============================================
 echo "Patching ComfyUI requirements..."
 
@@ -121,20 +135,34 @@ ck = _FakeCK()
 EOF
 
 # ============================================
-# STEP 6: Install ComfyUI requirements (without numpy or comfy-kitchen)
+# STEP 7: Install ComfyUI requirements (without numpy or comfy-kitchen)
 # ============================================
 echo "Installing ComfyUI requirements..."
 $VENV_PIP install --no-cache-dir -r $COMFY/requirements.txt || true
 
 # ============================================
-# STEP 7: Force NumPy back to 1.24.4
+# STEP 8: RE-APPLY patches after installation (critical!)
+# ============================================
+echo "Re-applying patches after installation..."
+
+# Re-patch numpy.dtypes in utils.py (in case it was overwritten)
+if [ -f "$COMFY/comfy/utils.py" ]; then
+    sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
+    echo "✓ Re-patched numpy.dtypes import"
+fi
+
+# Re-patch any other numpy.dtypes imports
+find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \; 2>/dev/null || true
+
+# ============================================
+# STEP 9: Force NumPy back to 1.24.4
 # ============================================
 echo "Force reinstalling NumPy 1.24.4..."
 $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 8: Install all other dependencies
+# STEP 10: Install all other dependencies
 # ============================================
 echo "Installing additional dependencies..."
 
@@ -171,13 +199,13 @@ $VENV_PIP install --no-cache-dir \
     scikit-image
 
 # ============================================
-# STEP 9: Force NumPy one more time
+# STEP 11: Force NumPy one more time
 # ============================================
 $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 10: Clone SoulX-Singer (use HTTPS)
+# STEP 12: Clone SoulX-Singer (use HTTPS)
 # ============================================
 if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
     echo "Cloning SoulX-Singer custom node..."
@@ -188,7 +216,7 @@ if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
 fi
 
 # ============================================
-# STEP 11: Setup symlinks
+# STEP 13: Setup symlinks
 # ============================================
 echo "Setting up symlinks..."
 rm -f $COMFY/models $COMFY/input $COMFY/output $COMFY/custom_nodes 2>/dev/null
@@ -198,23 +226,24 @@ ln -sfn $BASE/output $COMFY/output
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 # ============================================
-# STEP 12: Download NLTK data
+# STEP 14: Download NLTK data
 # ============================================
 $VENV_PYTHON -c "import nltk; nltk.download('cmudict', quiet=True); nltk.download('averaged_perceptron_tagger', quiet=True)" 2>/dev/null || true
 
 # ============================================
-# STEP 13: Final verification
+# STEP 15: Final verification
 # ============================================
 echo "Verifying installations..."
 $VENV_PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $VENV_PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
 $VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
 
-# Test that uint32 is patched
+# Test that patches work
+$VENV_PYTHON -c "from numpy import float64 as Float64DType; print('✓ numpy.dtypes patch working')"
 $VENV_PYTHON -c "import torch; print(f'torch.uint32 exists: {hasattr(torch, \"uint32\")}')"
 
 # ============================================
-# STEP 14: Start Jupyter
+# STEP 16: Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
 cd /workspace
@@ -229,7 +258,7 @@ $VENV_PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# STEP 15: Start ComfyUI
+# STEP 17: Start ComfyUI
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
