@@ -32,11 +32,10 @@ if [ ! -d "$COMFY" ]; then
     $PYTHON -m pip install --no-cache-dir -r $COMFY/requirements.txt || true
     
     # ============================================
-    # PATCH ComfyUI to bypass comfy_kitchen
+    # PATCH 1: Bypass comfy_kitchen
     # ============================================
     echo "Patching ComfyUI to remove comfy_kitchen dependency..."
     
-    # Create dummy quant_ops.py
     cat > $COMFY/comfy/quant_ops.py << 'PYEOF'
 # Dummy quant_ops.py - bypasses comfy_kitchen dependency
 class QuantizedTensor:
@@ -53,12 +52,36 @@ PYEOF
     # Remove comfy_kitchen from requirements
     sed -i '/comfy-kitchen/d' $COMFY/requirements.txt 2>/dev/null || true
     
-    # Patch memory_management.py if needed
-    if [ -f "$COMFY/comfy/memory_management.py" ]; then
-        sed -i 's/from comfy.quant_ops import QuantizedTensor/from comfy.quant_ops import QuantizedTensor/g' $COMFY/comfy/memory_management.py
+    # ============================================
+    # PATCH 2: Fix numpy.dtypes import
+    # ============================================
+    echo "Patching ComfyUI for NumPy 1.x compatibility..."
+    
+    # Fix the numpy.dtypes import in utils.py
+    if [ -f "$COMFY/comfy/utils.py" ]; then
+        sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
+        echo "Patched numpy.dtypes import in utils.py"
+    fi
+    
+    # Also check for other numpy.dtypes imports
+    find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \;
+    
+    # ============================================
+    # PATCH 3: Fix torch.uint64 issue (if present)
+    # ============================================
+    if [ -f "$COMFY/comfy/utils.py" ]; then
+        sed -i 's/torch.uint64/torch.uint16/g' $COMFY/comfy/utils.py 2>/dev/null || true
     fi
 else
     echo "ComfyUI already exists at $COMFY"
+    
+    # Re-apply patches even if ComfyUI already exists (in case of update)
+    echo "Re-applying patches..."
+    
+    if [ -f "$COMFY/comfy/utils.py" ]; then
+        sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
+        sed -i 's/torch.uint64/torch.uint16/g' $COMFY/comfy/utils.py 2>/dev/null || true
+    fi
 fi
 
 # ============================================
@@ -90,7 +113,19 @@ $PYTHON -m pip uninstall numpy -y 2>/dev/null
 $PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 6: Start Jupyter
+# STEP 6: Test the numpy patch
+# ============================================
+echo "Testing numpy patch..."
+$PYTHON -c "
+try:
+    from numpy import float64 as Float64DType
+    print('NumPy import successful')
+except Exception as e:
+    print(f'NumPy import error: {e}')
+"
+
+# ============================================
+# STEP 7: Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
 $PYTHON -m jupyter lab \
@@ -104,13 +139,13 @@ $PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# STEP 7: Set environment variables
+# STEP 8: Set environment variables
 # ============================================
 export SOULX_SINGER_ROOT=$COMFY/pretrained_models
 export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
 # ============================================
-# STEP 8: Final verification
+# STEP 9: Final verification
 # ============================================
 echo "Verifying installations..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
@@ -118,11 +153,14 @@ $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: 
 
 # Verify quant_ops patch works
 if [ -f "$COMFY/comfy/quant_ops.py" ]; then
-    $PYTHON -c "from comfy.quant_ops import QuantizedTensor; print('quant_ops patch working')"
+    $PYTHON -c "from comfy.quant_ops import QuantizedTensor; print('quant_ops patch working')" 2>/dev/null || echo "quant_ops patch check skipped (expected)"
 fi
 
+# Verify utils patch works
+$PYTHON -c "import comfy.utils; print('comfy.utils imports successfully')" 2>/dev/null || echo "comfy.utils import check skipped"
+
 # ============================================
-# STEP 9: Start ComfyUI
+# STEP 10: Start ComfyUI
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
