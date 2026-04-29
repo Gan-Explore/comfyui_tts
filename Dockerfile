@@ -26,16 +26,14 @@ ENV PATH="/opt/comfy_env/bin:$PATH"
 # Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Install NumPy 1.24.4
+# Install NumPy 1.24.4 first
 RUN pip install --no-cache-dir --no-deps numpy==1.24.4
 
 # Install PyTorch 2.2.0 with CUDA 11.8
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# DO NOT INSTALL comfy-kitchen - it will be patched out at runtime
-
-# Install other dependencies
+# Install SoulX-Singer and audio dependencies
 RUN pip install --no-cache-dir \
     opencv-python==4.8.1.78 \
     scikit-image==0.21.0 \
