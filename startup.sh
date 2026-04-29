@@ -2,6 +2,11 @@
 
 set +e
 
+# ============================================
+# FIX CUDA ALLOCATOR ERROR
+# ============================================
+export PYTORCH_CUDA_ALLOC_CONF=backend:native
+
 BASE="/workspace/runpod-slim"
 COMFY="$BASE/ComfyUI"
 
@@ -12,6 +17,7 @@ VENV_PIP="/opt/comfy_env/bin/pip"
 echo "==========================================="
 echo "STARTING TTS LAB (SoulX-Singer Ready)"
 echo "==========================================="
+echo "CUDA Allocator: $PYTORCH_CUDA_ALLOC_CONF"
 
 # Show which python we're using
 echo "Using Python: $VENV_PYTHON"
@@ -102,7 +108,6 @@ fi
 echo "Patching numpy.dtypes import in utils.py..."
 
 if [ -f "$COMFY/comfy/utils.py" ]; then
-    # Replace the problematic import
     sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
     echo "✓ Patched numpy.dtypes import"
 fi
@@ -151,7 +156,6 @@ if [ -f "$COMFY/comfy/utils.py" ]; then
     echo "✓ Re-patched numpy.dtypes import"
 fi
 
-# Re-patch any other numpy.dtypes imports
 find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \; 2>/dev/null || true
 
 # ============================================
@@ -219,11 +223,11 @@ fi
 # STEP 13: Setup symlinks
 # ============================================
 echo "Setting up symlinks..."
-rm -f $COMFY/models $COMFY/input $COMFY/output $COMFY/custom_nodes 2>/dev/null
-ln -sfn $BASE/models $COMFY/models
-ln -sfn $BASE/input $COMFY/input
-ln -sfn $BASE/output $COMFY/output
-ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
+# rm -f $COMFY/models $COMFY/input $COMFY/output $COMFY/custom_nodes 2>/dev/null
+# ln -sfn $BASE/models $COMFY/models
+# ln -sfn $BASE/input $COMFY/input
+# ln -sfn $BASE/output $COMFY/output
+# ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 # ============================================
 # STEP 14: Download NLTK data
@@ -241,6 +245,9 @@ $VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}
 # Test that patches work
 $VENV_PYTHON -c "from numpy import float64 as Float64DType; print('✓ numpy.dtypes patch working')"
 $VENV_PYTHON -c "import torch; print(f'torch.uint32 exists: {hasattr(torch, \"uint32\")}')"
+
+# Test CUDA allocator
+$VENV_PYTHON -c "import torch; x = torch.randn(10).cuda(); print('✓ CUDA working')"
 
 # ============================================
 # STEP 16: Start Jupyter
