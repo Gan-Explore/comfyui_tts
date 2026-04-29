@@ -1,6 +1,10 @@
-# Use RunPod's official ComfyUI base image
-# This avoids all the compatibility issues we've been fighting
-FROM runpod/worker-comfyui:3.0.0-base
+# Use the community-maintained RunPod ComfyUI base image
+# Available images:
+# - timpietruskyblibla/runpod-worker-comfy:3.0.0-base (clean ComfyUI, no models)
+# - timpietruskyblibla/runpod-worker-comfy:3.0.0-sdxl (with SDXL models)
+# - timpietruskyblibla/runpod-worker-comfy:3.0.0-sd3 (with SD3 model)
+# - timpietruskyblibla/runpod-worker-comfy:latest (latest stable)
+FROM timpietruskyblibla/runpod-worker-comfy:3.0.0-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PIP_NO_CACHE_DIR=1
@@ -28,7 +32,7 @@ RUN pip install --no-cache-dir \
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('cmudict'); nltk.download('averaged_perceptron_tagger')"
 
-# Cache directories
+# Set cache directories
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
 ENV TRANSFORMERS_CACHE=/workspace/runpod-slim/model_cache/huggingface
 ENV NLTK_DATA=/workspace/runpod-slim/nltk_data
