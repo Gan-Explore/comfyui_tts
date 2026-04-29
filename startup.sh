@@ -12,7 +12,7 @@ echo "STARTING TTS LAB (SoulX-Singer Ready)"
 echo "==========================================="
 
 # ============================================
-# STEP 1: Create directory structure if it doesn't exist
+# STEP 1: Create directory structure
 # ============================================
 echo "Setting up directory structure..."
 mkdir -p $BASE
@@ -26,16 +26,101 @@ if [ ! -d "$COMFY" ]; then
     cd $BASE
     git clone https://github.com/comfyanonymous/ComfyUI.git
     echo "ComfyUI cloned successfully"
-    
-    # Install ComfyUI requirements
-    echo "Installing ComfyUI requirements..."
-    $PYTHON -m pip install --no-cache-dir -r $COMFY/requirements.txt || true
-    
-    # ============================================
-    # PATCH 1: Bypass comfy_kitchen
-    # ============================================
-    echo "Patching ComfyUI to remove comfy_kitchen dependency..."
-    
+fi
+
+# ============================================
+# STEP 3: Install ALL dependencies at once
+# ============================================
+echo "Installing ALL required dependencies..."
+
+$PYTHON -m pip install --no-cache-dir \
+    # Core ComfyUI dependencies
+    torch==2.2.0 \
+    torchvision==0.17.0 \
+    torchaudio==2.2.0 \
+    numpy==1.24.4 \
+    einops \
+    transformers==4.36.2 \
+    tokenizers \
+    sentencepiece \
+    safetensors \
+    aiohttp \
+    yarl \
+    pyyaml \
+    Pillow \
+    scipy \
+    tqdm \
+    psutil \
+    # Database
+    sqlalchemy \
+    alembic \
+    # File handling
+    av \
+    # ComfyUI extras
+    comfyui-frontend-package \
+    comfyui-workflow-templates \
+    comfyui-embedded-docs \
+    comfy-aimdo \
+    blake3 \
+    kornia \
+    spandrel \
+    pydantic \
+    pydantic-settings \
+    PyOpenGL \
+    glfw \
+    # Audio processing
+    soundfile \
+    librosa \
+    omegaconf \
+    demucs \
+    # Text processing
+    ToJyutping \
+    g2p_en \
+    g2pM \
+    nltk \
+    regex \
+    # Jupyter
+    jupyter \
+    jupyterlab \
+    ipykernel \
+    notebook \
+    # Utilities
+    opencv-python \
+    scikit-image \
+    simpleeval \
+    gitpython \
+    toml \
+    cloudpickle \
+    fiddle \
+    beartype \
+    packaging \
+    six \
+    requests \
+    filelock \
+    fsspec \
+    jinja2 \
+    networkx \
+    sympy \
+    mpmath \
+    markupsafe \
+    huggingface_hub \
+    accelerate \
+    einops \
+    rotary_embedding_torch
+
+# ============================================
+# STEP 4: Fix any numpy upgrade attempts
+# ============================================
+echo "Pinning NumPy to 1.24.4..."
+$PYTHON -m pip uninstall numpy -y 2>/dev/null
+$PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
+
+# ============================================
+# STEP 5: PATCH ComfyUI to bypass comfy_kitchen
+# ============================================
+echo "Patching ComfyUI to remove comfy_kitchen dependency..."
+
+if [ -f "$COMFY/comfy/quant_ops.py" ]; then
     cat > $COMFY/comfy/quant_ops.py << 'PYEOF'
 # Dummy quant_ops.py - bypasses comfy_kitchen dependency
 class QuantizedTensor:
@@ -48,84 +133,87 @@ class _FakeCK:
 
 ck = _FakeCK()
 PYEOF
-    
-    # Remove comfy_kitchen from requirements
-    sed -i '/comfy-kitchen/d' $COMFY/requirements.txt 2>/dev/null || true
-    
-    # ============================================
-    # PATCH 2: Fix numpy.dtypes import
-    # ============================================
-    echo "Patching ComfyUI for NumPy 1.x compatibility..."
-    
-    # Fix the numpy.dtypes import in utils.py
-    if [ -f "$COMFY/comfy/utils.py" ]; then
-        sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
-        echo "Patched numpy.dtypes import in utils.py"
-    fi
-    
-    # Also check for other numpy.dtypes imports
-    find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \;
-    
-    # ============================================
-    # PATCH 3: Fix torch.uint64 issue (if present)
-    # ============================================
-    if [ -f "$COMFY/comfy/utils.py" ]; then
-        sed -i 's/torch.uint64/torch.uint16/g' $COMFY/comfy/utils.py 2>/dev/null || true
-    fi
-else
-    echo "ComfyUI already exists at $COMFY"
-    
-    # Re-apply patches even if ComfyUI already exists (in case of update)
-    echo "Re-applying patches..."
-    
-    if [ -f "$COMFY/comfy/utils.py" ]; then
-        sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
-        sed -i 's/torch.uint64/torch.uint16/g' $COMFY/comfy/utils.py 2>/dev/null || true
-    fi
 fi
 
+# Remove comfy_kitchen from requirements.txt
+sed -i '/comfy-kitchen/d' $COMFY/requirements.txt 2>/dev/null || true
+
 # ============================================
-# STEP 3: Clone SoulX-Singer custom node
+# STEP 6: PATCH numpy.dtypes imports
+# ============================================
+echo "Patching ComfyUI for NumPy 1.x compatibility..."
+
+if [ -f "$COMFY/comfy/utils.py" ]; then
+    sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
+    sed -i 's/torch.uint64/torch.uint16/g' $COMFY/comfy/utils.py 2>/dev/null || true
+fi
+
+# Patch all Python files for numpy.dtypes
+find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \; 2>/dev/null || true
+
+# ============================================
+# STEP 7: Clone SoulX-Singer custom node
 # ============================================
 if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
     echo "Cloning SoulX-Singer custom node..."
+    mkdir -p $COMFY/custom_nodes
     cd $COMFY/custom_nodes
     git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git || \
         echo "Warning: SoulX-Singer clone failed"
-else
-    echo "SoulX-Singer already exists"
 fi
 
 # ============================================
-# STEP 4: Setup symlinks
+# STEP 8: Fix nested directory issue
 # ============================================
-echo "Setting up symlinks..."
+echo "Fixing symlinks (preventing nested directories)..."
+
+# Remove existing symlinks if they point to wrong locations
+rm -f $COMFY/models $COMFY/input $COMFY/output $COMFY/custom_nodes 2>/dev/null
+
+# Create correct symlinks
 ln -sfn $BASE/models $COMFY/models
 ln -sfn $BASE/input $COMFY/input
 ln -sfn $BASE/output $COMFY/output
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
-# ============================================
-# STEP 5: Ensure NumPy is correct version
-# ============================================
-echo "Ensuring NumPy 1.24.4 is installed..."
-$PYTHON -m pip uninstall numpy -y 2>/dev/null
-$PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
+# Verify symlinks are correct
+echo "Symlink verification:"
+ls -la $COMFY/ | grep -E "models|input|output|custom_nodes"
 
 # ============================================
-# STEP 6: Test the numpy patch
+# STEP 9: Download NLTK data
 # ============================================
-echo "Testing numpy patch..."
+echo "Downloading NLTK data..."
+$PYTHON -c "import nltk; nltk.download('cmudict', quiet=True); nltk.download('averaged_perceptron_tagger', quiet=True)" 2>/dev/null || true
+
+# ============================================
+# STEP 10: Test critical imports
+# ============================================
+echo "Testing critical imports..."
+
 $PYTHON -c "
-try:
-    from numpy import float64 as Float64DType
-    print('NumPy import successful')
-except Exception as e:
-    print(f'NumPy import error: {e}')
+import sys
+missing = []
+critical_modules = [
+    'torch', 'numpy', 'sqlalchemy', 'aiohttp', 'transformers',
+    'soundfile', 'librosa', 'PIL', 'cv2', 'skimage', 'jupyter'
+]
+for mod in critical_modules:
+    try:
+        __import__(mod)
+        print(f'✓ {mod}')
+    except ImportError as e:
+        print(f'✗ {mod}: {e}')
+        missing.append(mod)
+
+if missing:
+    print(f'WARNING: Missing modules: {missing}')
+else:
+    print('All critical modules imported successfully!')
 "
 
 # ============================================
-# STEP 7: Start Jupyter
+# STEP 11: Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
 $PYTHON -m jupyter lab \
@@ -139,28 +227,21 @@ $PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# STEP 8: Set environment variables
+# STEP 12: Set environment variables
 # ============================================
 export SOULX_SINGER_ROOT=$COMFY/pretrained_models
 export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
 # ============================================
-# STEP 9: Final verification
+# STEP 13: Final verification
 # ============================================
-echo "Verifying installations..."
+echo "Final verification..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-
-# Verify quant_ops patch works
-if [ -f "$COMFY/comfy/quant_ops.py" ]; then
-    $PYTHON -c "from comfy.quant_ops import QuantizedTensor; print('quant_ops patch working')" 2>/dev/null || echo "quant_ops patch check skipped (expected)"
-fi
-
-# Verify utils patch works
-$PYTHON -c "import comfy.utils; print('comfy.utils imports successfully')" 2>/dev/null || echo "comfy.utils import check skipped"
+$PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
 
 # ============================================
-# STEP 10: Start ComfyUI
+# STEP 14: Start ComfyUI
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
