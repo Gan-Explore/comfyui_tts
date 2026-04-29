@@ -34,11 +34,11 @@ RUN pip install --no-cache-dir --no-deps numpy==1.24.4
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Clone ComfyUI to the correct path
+# Clone ComfyUI to the correct path with a confirmed working commit
 RUN mkdir -p /workspace/runpod-slim
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI && \
     cd /workspace/runpod-slim/ComfyUI && \
-    git checkout 07d0b3a
+    git checkout c2b7e8a
 
 # Install ComfyUI requirements
 RUN pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
