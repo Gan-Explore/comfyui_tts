@@ -16,19 +16,27 @@ if [ ! -d "$COMFY" ]; then
     echo "ERROR: ComfyUI not found at $COMFY"
     echo "Available directories:"
     ls -la /workspace/
-    exit 1
+# Create directory structure
+    echo "Creating directory structure and installing ComfyUI...."
+    RUN mkdir -p /workspace/runpod-slim/ComfyUI
+
+# Clone ComfyUI to the correct path
+    RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
+
+# Install ComfyUI requirements
+    RUN pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
 fi
 
 echo "ComfyUI found at $COMFY"
 
 # Setup symlinks (create directories if they don't exist)
-mkdir -p $BASE/{models,input,output,custom_nodes}
-mkdir -p $COMFY
+# mkdir -p $BASE/{models,input,output,custom_nodes}
+# mkdir -p $COMFY
 
-ln -sfn $BASE/models $COMFY/models
-ln -sfn $BASE/input $COMFY/input
-ln -sfn $BASE/output $COMFY/output
-ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
+# ln -sfn $BASE/models $COMFY/models
+# ln -sfn $BASE/input $COMFY/input
+# ln -sfn $BASE/output $COMFY/output
+# ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 echo "Directory structure:"
 ls -la $COMFY/
