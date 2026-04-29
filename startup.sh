@@ -51,7 +51,7 @@ $VENV_PIP install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
 # ============================================
-# STEP 4: Create compatibility patch module
+# STEP 4: Create comprehensive compatibility patch module
 # ============================================
 echo "Creating compatibility patch module..."
 
@@ -69,10 +69,18 @@ if not hasattr(torch.serialization, 'add_safe_globals'):
     torch.serialization.add_safe_globals = add_safe_globals
     print("✓ Patched torch.serialization.add_safe_globals")
 
-# Patch 2: Add missing uint64 (use the closest existing dtype)
-if not hasattr(torch, 'uint64'):
-    torch.uint64 = torch.uint8
-    print("✓ Patched torch.uint64 -> torch.uint8")
+# Patch 2: Add all missing uint dtypes (map to closest available)
+uint_mappings = {
+    'uint8': torch.uint8,
+    'uint16': torch.uint8,   # uint16 doesn't exist, map to uint8
+    'uint32': torch.uint8,   # uint32 doesn't exist, map to uint8
+    'uint64': torch.uint8,   # uint64 doesn't exist, map to uint8
+}
+
+for name, value in uint_mappings.items():
+    if not hasattr(torch, name):
+        setattr(torch, name, value)
+        print(f"✓ Patched torch.{name} -> torch.{value}")
 
 # Patch 3: Add missing float8 dtypes
 if not hasattr(torch, 'float8_e4m3fn'):
@@ -169,13 +177,12 @@ $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 10: Clone SoulX-Singer (use SSH or fallback)
+# STEP 10: Clone SoulX-Singer (use HTTPS)
 # ============================================
 if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
     echo "Cloning SoulX-Singer custom node..."
     mkdir -p $COMFY/custom_nodes
     cd $COMFY/custom_nodes
-    # Try HTTPS first (doesn't require SSH key)
     git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git 2>/dev/null || \
     echo "Warning: SoulX-Singer clone failed - you may need to install manually"
 fi
@@ -202,6 +209,9 @@ echo "Verifying installations..."
 $VENV_PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $VENV_PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
 $VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
+
+# Test that uint32 is patched
+$VENV_PYTHON -c "import torch; print(f'torch.uint32 exists: {hasattr(torch, \"uint32\")}')"
 
 # ============================================
 # STEP 14: Start Jupyter
