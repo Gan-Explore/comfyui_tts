@@ -3,7 +3,7 @@
 set -e
 
 echo "==========================================="
-echo "STARTING TTS LAB (SoulX-Singer Ready)"
+echo "STARTING TTS LAB (SoulX-Singer Ready)" Trial
 echo "==========================================="
 
 BASE="/workspace/runpod-slim"
