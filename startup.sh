@@ -35,13 +35,23 @@ if [ ! -d "$COMFY" ]; then
 fi
 
 # ============================================
-# STEP 3: Upgrade pip and install core dependencies
+# STEP 3: Upgrade pip and install core packages
 # ============================================
 echo "Upgrading pip..."
 $VENV_PIP install --upgrade pip setuptools wheel
 
+# Install NumPy FIRST and lock it
+echo "Installing NumPy 1.24.4..."
+$VENV_PIP uninstall numpy -y 2>/dev/null
+$VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
+
+# Install PyTorch
+echo "Installing PyTorch 2.2.0..."
+$VENV_PIP install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
+    --index-url https://download.pytorch.org/whl/cu118
+
 # ============================================
-# STEP 4: Create a compatibility patch module
+# STEP 4: Create compatibility patch module
 # ============================================
 echo "Creating compatibility patch module..."
 
@@ -59,12 +69,12 @@ if not hasattr(torch.serialization, 'add_safe_globals'):
     torch.serialization.add_safe_globals = add_safe_globals
     print("✓ Patched torch.serialization.add_safe_globals")
 
-# Patch 2: Add missing uint64 if needed
+# Patch 2: Add missing uint64 (use the closest existing dtype)
 if not hasattr(torch, 'uint64'):
-    torch.uint64 = torch.uint16
-    print("✓ Patched torch.uint64 -> torch.uint16")
+    torch.uint64 = torch.uint8
+    print("✓ Patched torch.uint64 -> torch.uint8")
 
-# Patch 3: Add missing dtypes if needed
+# Patch 3: Add missing float8 dtypes
 if not hasattr(torch, 'float8_e4m3fn'):
     torch.float8_e4m3fn = torch.float16
 if not hasattr(torch, 'float8_e5m2'):
@@ -73,32 +83,53 @@ if not hasattr(torch, 'float8_e5m2'):
 print("PyTorch compatibility patches applied")
 PYEOF
 
-# ============================================
-# STEP 5: Apply the patch to main.py
-# ============================================
-echo "Applying compatibility patches to ComfyUI..."
-
-# Add import to main.py
+# Apply patch to main.py
 if ! grep -q "pytorch_compat" $COMFY/main.py; then
     sed -i '1iimport comfy.pytorch_compat' $COMFY/main.py
 fi
 
-# Add import to utils.py
-if [ -f "$COMFY/comfy/utils.py" ]; then
-    if ! grep -q "pytorch_compat" $COMFY/comfy/utils.py; then
-        sed -i '1iimport comfy.pytorch_compat' $COMFY/comfy/utils.py
-    fi
-fi
+# ============================================
+# STEP 5: Fix ComfyUI requirements BEFORE installing
+# ============================================
+echo "Patching ComfyUI requirements..."
+
+# Remove numpy requirement (we have our own)
+sed -i '/^numpy/d' $COMFY/requirements.txt 2>/dev/null || true
+
+# Remove comfy-kitchen requirement
+sed -i '/comfy-kitchen/d' $COMFY/requirements.txt 2>/dev/null || true
+
+# Create dummy quant_ops.py
+cat > $COMFY/comfy/quant_ops.py << 'EOF'
+# Dummy quant_ops.py - bypasses comfy_kitchen dependency
+class QuantizedTensor:
+    pass
+
+class _FakeCK:
+    def __getattr__(self, name):
+        return None
+
+ck = _FakeCK()
+EOF
 
 # ============================================
-# STEP 6: Install dependencies
+# STEP 6: Install ComfyUI requirements (without numpy or comfy-kitchen)
 # ============================================
-echo "Installing PyTorch and NumPy..."
-$VENV_PIP install --no-cache-dir --no-deps numpy==1.24.4
-$VENV_PIP install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
-    --index-url https://download.pytorch.org/whl/cu118
+echo "Installing ComfyUI requirements..."
+$VENV_PIP install --no-cache-dir -r $COMFY/requirements.txt || true
 
-echo "Installing ALL required dependencies..."
+# ============================================
+# STEP 7: Force NumPy back to 1.24.4
+# ============================================
+echo "Force reinstalling NumPy 1.24.4..."
+$VENV_PIP uninstall numpy -y 2>/dev/null
+$VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
+
+# ============================================
+# STEP 8: Install all other dependencies
+# ============================================
+echo "Installing additional dependencies..."
+
 $VENV_PIP install --no-cache-dir \
     sqlalchemy \
     alembic \
@@ -129,81 +160,24 @@ $VENV_PIP install --no-cache-dir \
     ipykernel \
     notebook \
     opencv-python \
-    scikit-image \
-    blake3 \
-    kornia \
-    spandrel \
-    pydantic \
-    pydantic-settings \
-    PyOpenGL \
-    glfw \
-    simpleeval \
-    gitpython \
-    toml \
-    cloudpickle \
-    fiddle \
-    beartype \
-    packaging \
-    six \
-    requests \
-    filelock \
-    fsspec \
-    jinja2 \
-    networkx \
-    sympy \
-    mpmath \
-    markupsafe \
-    huggingface_hub \
-    accelerate \
-    rotary_embedding_torch
+    scikit-image
 
 # ============================================
-# STEP 7: Force NumPy to stay at 1.24.4
+# STEP 9: Force NumPy one more time
 # ============================================
-echo "Pinning NumPy to 1.24.4..."
 $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 8: Install ComfyUI requirements
-# ============================================
-echo "Installing ComfyUI requirements..."
-$VENV_PIP install --no-cache-dir -r $COMFY/requirements.txt || true
-
-# ============================================
-# STEP 9: PATCH ComfyUI for comfy_kitchen
-# ============================================
-echo "Patching ComfyUI to bypass comfy_kitchen..."
-
-cat > $COMFY/comfy/quant_ops.py << 'PYEOF'
-# Dummy quant_ops.py - bypasses comfy_kitchen dependency
-class QuantizedTensor:
-    pass
-
-class _FakeCK:
-    def __getattr__(self, name):
-        return None
-
-ck = _FakeCK()
-PYEOF
-
-# Patch numpy.dtypes import
-if [ -f "$COMFY/comfy/utils.py" ]; then
-    sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
-fi
-
-# Remove comfy_kitchen from requirements
-sed -i '/comfy-kitchen/d' $COMFY/requirements.txt 2>/dev/null || true
-
-# ============================================
-# STEP 10: Clone SoulX-Singer custom node
+# STEP 10: Clone SoulX-Singer (use SSH or fallback)
 # ============================================
 if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
     echo "Cloning SoulX-Singer custom node..."
     mkdir -p $COMFY/custom_nodes
     cd $COMFY/custom_nodes
-    git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git || \
-        echo "Warning: SoulX-Singer clone failed"
+    # Try HTTPS first (doesn't require SSH key)
+    git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git 2>/dev/null || \
+    echo "Warning: SoulX-Singer clone failed - you may need to install manually"
 fi
 
 # ============================================
@@ -222,25 +196,18 @@ ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 $VENV_PYTHON -c "import nltk; nltk.download('cmudict', quiet=True); nltk.download('averaged_perceptron_tagger', quiet=True)" 2>/dev/null || true
 
 # ============================================
-# STEP 13: Verify installations
+# STEP 13: Final verification
 # ============================================
 echo "Verifying installations..."
-$VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
 $VENV_PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $VENV_PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-$VENV_PYTHON -c "import comfy.pytorch_compat; print('Compat patches loaded')"
+$VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
 
 # ============================================
-# STEP 14: Set environment variables
-# ============================================
-export SOULX_SINGER_ROOT=$COMFY/pretrained_models
-export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
-export PATH="/opt/comfy_env/bin:$PATH"
-
-# ============================================
-# STEP 15: Start Jupyter
+# STEP 14: Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
+cd /workspace
 $VENV_PYTHON -m jupyter lab \
   --ip=0.0.0.0 \
   --port=8888 \
@@ -252,15 +219,13 @@ $VENV_PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# STEP 16: Start ComfyUI
+# STEP 15: Start ComfyUI
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
-
-if [ ! -f "main.py" ]; then
-    echo "ERROR: main.py not found in $COMFY"
-    exit 1
-fi
+export PATH="/opt/comfy_env/bin:$PATH"
+export SOULX_SINGER_ROOT=$COMFY/pretrained_models
+export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
 $VENV_PYTHON main.py --listen 0.0.0.0 --port 8188
 
