@@ -34,15 +34,6 @@ RUN pip install --no-cache-dir --no-deps numpy==1.24.4
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Create directory structure
-# RUN mkdir -p /workspace/runpod-slim/ComfyUI
-
-# Clone ComfyUI to the correct path
-# RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
-
-# Install ComfyUI requirements
-# RUN pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
-
 # Install SoulX-Singer dependencies
 RUN pip install --no-cache-dir \
     ToJyutping==3.2.0 \
@@ -71,13 +62,8 @@ RUN pip install --no-cache-dir --force-reinstall --no-deps numpy==1.24.4
 # Clean up
 RUN rm -rf /root/.cache/pip
 
-# Setup working directories
+# Create base directory structure
 RUN mkdir -p /workspace/runpod-slim/{models,input,output,custom_nodes}
-
-# Clone SoulX-Singer custom node
-RUN cd /workspace/runpod-slim/ComfyUI/custom_nodes && \
-    git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git || \
-    echo "SoulX-Singer clone failed, continuing..."
 
 # Environment variables
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
