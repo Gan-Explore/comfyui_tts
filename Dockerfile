@@ -34,13 +34,14 @@ RUN pip install --no-cache-dir --no-deps numpy==1.24.4
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Clone a known working version of ComfyUI
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI && \
-    cd /workspace/ComfyUI && \
-    git checkout 68e2b70
+# Clone ComfyUI to the correct path
+RUN mkdir -p /workspace/runpod-slim
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI && \
+    cd /workspace/runpod-slim/ComfyUI && \
+    git checkout 07d0b3a
 
 # Install ComfyUI requirements
-RUN pip install --no-cache-dir -r /workspace/ComfyUI/requirements.txt || true
+RUN pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
 
 # Install SoulX-Singer dependencies
 RUN pip install --no-cache-dir \
