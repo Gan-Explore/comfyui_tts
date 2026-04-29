@@ -1,4 +1,4 @@
-# Self-contained Dockerfile with known working ComfyUI version
+# Self-contained Dockerfile for SoulX-Singer
 FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -34,8 +34,10 @@ RUN pip install --no-cache-dir --no-deps numpy==1.24.4
 RUN pip install --no-cache-dir torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
 
-# Clone ComfyUI to the correct path (without checking out a specific hash)
+# Create directory structure
 RUN mkdir -p /workspace/runpod-slim
+
+# Clone ComfyUI to the correct path
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
 
 # Install ComfyUI requirements
@@ -71,6 +73,11 @@ RUN rm -rf /root/.cache/pip
 
 # Setup working directories
 RUN mkdir -p /workspace/runpod-slim/{models,input,output,custom_nodes}
+
+# Clone SoulX-Singer custom node
+RUN cd /workspace/runpod-slim/ComfyUI/custom_nodes && \
+    git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git || \
+    echo "SoulX-Singer clone failed, continuing..."
 
 # Environment variables
 ENV HF_HOME=/workspace/runpod-slim/model_cache/huggingface
