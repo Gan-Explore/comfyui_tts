@@ -18,13 +18,13 @@ if [ ! -d "$COMFY" ]; then
     ls -la /workspace/
 # Create directory structure
     echo "Creating directory structure and installing ComfyUI...."
-    RUN mkdir -p /workspace/runpod-slim/ComfyUI
+    mkdir -p /workspace/runpod-slim/ComfyUI
 
 # Clone ComfyUI to the correct path
-    RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
+    git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI
 
 # Install ComfyUI requirements
-    RUN pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
+    pip install --no-cache-dir -r /workspace/runpod-slim/ComfyUI/requirements.txt || true
 fi
 
 echo "ComfyUI found at $COMFY"
