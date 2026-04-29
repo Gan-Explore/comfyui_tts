@@ -115,6 +115,8 @@ export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 fuser -k 8188/tcp 2>/dev/null || true
 
 # Start ComfyUI with correct bindings
-python main.py --listen 0.0.0.0 --port 8188
+# python main.py --listen 0.0.0.0 --port 8188
+# Ensure we're using the virtual environment python
+/opt/comfy_env/bin/python main.py --listen 0.0.0.0 --port 8188
 
 sleep infinity
