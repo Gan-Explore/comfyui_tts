@@ -26,108 +26,57 @@ done
 mkdir -p $BASE
 cd $BASE
 
-# Clone ComfyUI if not exists
+# ============================================
+# STEP 1: Clone specific working version of ComfyUI
+# ============================================
 if [ ! -d "$COMFY" ]; then
-  echo "Cloning ComfyUI..."
+  echo "Cloning ComfyUI (stable version from Dec 2024)..."
   git clone https://github.com/comfyanonymous/ComfyUI.git
+  cd $COMFY
+  # Checkout a stable commit that works with PyTorch 2.2.0
+  git checkout 172fd62
+  echo "Checked out stable commit 172fd62"
 else
   echo "ComfyUI already exists"
-fi
-
-cd $COMFY
-
-# ============================================
-# PATCH 1: Remove comfy-kitchen dependency
-# ============================================
-echo "Patching ComfyUI to bypass comfy-kitchen..."
-sed -i '/comfy-kitchen/d' requirements.txt
-
-if [ -f "comfy/memory_management.py" ]; then
-  sed -i 's/from comfy.quant_ops import QuantizedTensor/# from comfy.quant_ops import QuantizedTensor/g' comfy/memory_management.py
-fi
-
-cat > comfy/quant_ops.py << 'EOF'
-# Dummy quant_ops.py - replaces comfy-kitchen dependency
-class QuantizedTensor:
-    """Dummy QuantizedTensor class to replace comfy-kitchen"""
-    pass
-
-ck = None
-EOF
-
-# ============================================
-# PATCH 2: Fix NumPy compatibility
-# ============================================
-echo "Patching ComfyUI for NumPy 1.x compatibility..."
-
-if [ -f "comfy/utils.py" ]; then
-  sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' comfy/utils.py
+  cd $COMFY
+  # Ensure we're on the stable version
+  git checkout 172fd62 2>/dev/null || true
 fi
 
 # ============================================
-# PATCH 3: Fix torch.serialization compatibility for PyTorch 2.2.0
+# STEP 2: Remove comfy-kitchen from requirements
 # ============================================
-echo "Patching ComfyUI for PyTorch 2.2.0 compatibility..."
-
-# Create a wrapper to add add_safe_globals if it doesn't exist
-cat > comfy/safe_globals_patch.py << 'EOF'
-# Patch for torch.serialization.add_safe_globals in PyTorch 2.2.0
-import torch
-
-if not hasattr(torch.serialization, 'add_safe_globals'):
-    def add_safe_globals(globals_list):
-        # Do nothing - this is a no-op for older PyTorch versions
-        pass
-    torch.serialization.add_safe_globals = add_safe_globals
-    print("Patched: added torch.serialization.add_safe_globals for PyTorch 2.2.0")
-
-# Also fix torch.uint64 (doesn't exist in PyTorch 2.2.0)
-if not hasattr(torch, 'uint64'):
-    torch.uint64 = torch.uint16
-    print("Patched: added torch.uint64 as alias for torch.uint16")
-EOF
-
-# Import the patch at the beginning of main.py and utils.py
-sed -i '1iimport comfy.safe_globals_patch' main.py 2>/dev/null || true
-sed -i '1iimport comfy.safe_globals_patch' comfy/utils.py 2>/dev/null || true
+echo "Removing comfy-kitchen from requirements..."
+sed -i '/comfy-kitchen/d' requirements.txt 2>/dev/null || true
 
 # ============================================
-# PATCH 4: Fix torch.uint64 in utils.py directly
-# ============================================
-if [ -f "comfy/utils.py" ]; then
-  sed -i 's/torch.uint64/torch.uint16/g' comfy/utils.py
-fi
-
-# ============================================
-# Install NumPy 1.24.4
+# STEP 3: Install NumPy 1.24.4
 # ============================================
 echo "Installing NumPy 1.24.4..."
-$PYTHON -m pip uninstall numpy comfy-kitchen -y 2>/dev/null
+$PYTHON -m pip uninstall numpy -y 2>/dev/null
 $PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# Install ComfyUI requirements
+# STEP 4: Install ComfyUI requirements
 # ============================================
 echo "Installing ComfyUI requirements..."
 $PYTHON -m pip install --no-cache-dir -r requirements.txt || true
 
 # ============================================
-# Reinstall NumPy (in case it got upgraded)
+# STEP 5: Re-pin NumPy
 # ============================================
 $PYTHON -m pip uninstall numpy -y 2>/dev/null
 $PYTHON -m pip install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# Install other dependencies
+# STEP 6: Install other dependencies
 # ============================================
 echo "Installing additional dependencies..."
 $PYTHON -m pip install opencv-python==4.8.1.78 scikit-image==0.21.0 --force-reinstall --no-deps || true
-
-# Install Jupyter
 $PYTHON -m pip install jupyter jupyterlab ipykernel notebook || true
 
 # ============================================
-# Setup symlinks
+# STEP 7: Setup symlinks
 # ============================================
 mkdir -p $BASE/{models,input,output,custom_nodes}
 ln -sfn $BASE/models $COMFY/models
@@ -137,7 +86,7 @@ rm -rf $COMFY/custom_nodes
 ln -sfn $BASE/custom_nodes $COMFY/custom_nodes
 
 # ============================================
-# Start Jupyter
+# STEP 8: Start Jupyter
 # ============================================
 echo "Starting Jupyter Lab on port 8888..."
 cd /workspace
@@ -153,21 +102,20 @@ $PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# Environment variables
+# STEP 9: Environment variables
 # ============================================
 export SOULX_SINGER_ROOT=/workspace/runpod-slim/ComfyUI/pretrained_models
 export PYTHONPATH=/workspace/runpod-slim/ComfyUI/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
 
 # ============================================
-# Final verification
+# STEP 10: Final verification
 # ============================================
 echo "Verifying environment..."
 $PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-$PYTHON -c "import comfy.safe_globals_patch; print('Patches loaded')"
 
 # ============================================
-# Start ComfyUI
+# STEP 11: Start ComfyUI
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
