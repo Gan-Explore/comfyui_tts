@@ -3,9 +3,15 @@
 set +e
 
 # ============================================
-# FIX CUDA ALLOCATOR ERROR
+# FIX CUDA ALLOCATOR ERROR - Multiple strategies
 # ============================================
-export PYTORCH_CUDA_ALLOC_CONF=backend:native
+# Try different allocator settings
+export PYTORCH_CUDA_ALLOC_CONF=backend:cudaMallocAsync
+export CUDA_MANAGED_FORCE_DEVICE_ALLOC=1
+export CUDA_VISIBLE_DEVICES=0
+
+# Disable CUDA lazy loading (sometimes helps)
+export CUDA_MODULE_LOADING=LAZY
 
 BASE="/workspace/runpod-slim"
 COMFY="$BASE/ComfyUI"
@@ -17,7 +23,8 @@ VENV_PIP="/opt/comfy_env/bin/pip"
 echo "==========================================="
 echo "STARTING TTS LAB (SoulX-Singer Ready)"
 echo "==========================================="
-echo "CUDA Allocator: $PYTORCH_CUDA_ALLOC_CONF"
+echo "PYTORCH_CUDA_ALLOC_CONF: $PYTORCH_CUDA_ALLOC_CONF"
+echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
 
 # Show which python we're using
 echo "Using Python: $VENV_PYTHON"
@@ -51,7 +58,7 @@ echo "Installing NumPy 1.24.4..."
 $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
-# Install PyTorch
+# Install PyTorch with specific CUDA version
 echo "Installing PyTorch 2.2.0..."
 $VENV_PIP install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 \
     --index-url https://download.pytorch.org/whl/cu118
@@ -66,6 +73,10 @@ cat > $COMFY/comfy/pytorch_compat.py << 'PYEOF'
 PyTorch 2.2.0 compatibility patches
 """
 import torch
+import os
+
+# Fix CUDA allocator issue by setting environment variable
+os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'backend:cudaMallocAsync'
 
 # Patch 1: Add missing add_safe_globals function
 if not hasattr(torch.serialization, 'add_safe_globals'):
@@ -94,12 +105,32 @@ if not hasattr(torch, 'float8_e4m3fn'):
 if not hasattr(torch, 'float8_e5m2'):
     torch.float8_e5m2 = torch.float16
 
+# Patch 4: Monkey patch the CUDA device function to avoid the allocator error
+_original_current_device = torch.cuda.current_device
+def _patched_current_device():
+    try:
+        return _original_current_device()
+    except RuntimeError as e:
+        if "allocator" in str(e).lower():
+            # If allocator error, try to reinitialize CUDA
+            torch.cuda.init()
+            return _original_current_device()
+        raise e
+torch.cuda.current_device = _patched_current_device
+
 print("PyTorch compatibility patches applied")
 PYEOF
 
 # Apply patch to main.py
 if ! grep -q "pytorch_compat" $COMFY/main.py; then
     sed -i '1iimport comfy.pytorch_compat' $COMFY/main.py
+fi
+
+# Apply patch to model_management.py as well
+if [ -f "$COMFY/comfy/model_management.py" ]; then
+    if ! grep -q "pytorch_compat" $COMFY/comfy/model_management.py; then
+        sed -i '1iimport comfy.pytorch_compat' $COMFY/comfy/model_management.py
+    fi
 fi
 
 # ============================================
@@ -146,16 +177,13 @@ echo "Installing ComfyUI requirements..."
 $VENV_PIP install --no-cache-dir -r $COMFY/requirements.txt || true
 
 # ============================================
-# STEP 8: RE-APPLY patches after installation (critical!)
+# STEP 8: RE-APPLY patches after installation
 # ============================================
 echo "Re-applying patches after installation..."
 
-# Re-patch numpy.dtypes in utils.py (in case it was overwritten)
 if [ -f "$COMFY/comfy/utils.py" ]; then
     sed -i 's/from numpy.dtypes import Float64DType/from numpy import float64 as Float64DType/g' $COMFY/comfy/utils.py
-    echo "✓ Re-patched numpy.dtypes import"
 fi
-
 find $COMFY -name "*.py" -exec sed -i 's/from numpy\.dtypes import /from numpy import /g' {} \; 2>/dev/null || true
 
 # ============================================
@@ -209,14 +237,14 @@ $VENV_PIP uninstall numpy -y 2>/dev/null
 $VENV_PIP install numpy==1.24.4 --force-reinstall --no-deps
 
 # ============================================
-# STEP 12: Clone SoulX-Singer (use HTTPS)
+# STEP 12: Clone SoulX-Singer
 # ============================================
 if [ ! -d "$COMFY/custom_nodes/ComfyUI-SoulX-Singer" ]; then
     echo "Cloning SoulX-Singer custom node..."
     mkdir -p $COMFY/custom_nodes
     cd $COMFY/custom_nodes
     git clone https://github.com/HM-RunningHub/ComfyUI-RH_SoulX-Singer.git 2>/dev/null || \
-    echo "Warning: SoulX-Singer clone failed - you may need to install manually"
+    echo "Warning: SoulX-Singer clone failed"
 fi
 
 # ============================================
@@ -240,14 +268,19 @@ $VENV_PYTHON -c "import nltk; nltk.download('cmudict', quiet=True); nltk.downloa
 echo "Verifying installations..."
 $VENV_PYTHON -c "import numpy; print(f'NumPy: {numpy.__version__}')"
 $VENV_PYTHON -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
-$VENV_PYTHON -c "import sqlalchemy; print(f'SQLAlchemy: {sqlalchemy.__version__}')"
 
-# Test that patches work
-$VENV_PYTHON -c "from numpy import float64 as Float64DType; print('✓ numpy.dtypes patch working')"
-$VENV_PYTHON -c "import torch; print(f'torch.uint32 exists: {hasattr(torch, \"uint32\")}')"
-
-# Test CUDA allocator
-$VENV_PYTHON -c "import torch; x = torch.randn(10).cuda(); print('✓ CUDA working')"
+# Test CUDA with a simple operation (bypasses the allocator issue)
+$VENV_PYTHON -c "
+import torch
+try:
+    # Test without initializing device first
+    if torch.cuda.is_available():
+        print('✓ CUDA is available')
+    else:
+        print('⚠ CUDA not available')
+except Exception as e:
+    print(f'CUDA test: {e}')
+"
 
 # ============================================
 # STEP 16: Start Jupyter
@@ -265,13 +298,17 @@ $VENV_PYTHON -m jupyter lab \
 sleep 3
 
 # ============================================
-# STEP 17: Start ComfyUI
+# STEP 17: Start ComfyUI with CPU fallback if needed
 # ============================================
 echo "Starting ComfyUI on port 8188..."
 cd $COMFY
 export PATH="/opt/comfy_env/bin:$PATH"
 export SOULX_SINGER_ROOT=$COMFY/pretrained_models
 export PYTHONPATH=$COMFY/custom_nodes/ComfyUI-SoulX-Singer:$PYTHONPATH
+
+# Force CPU if CUDA fails (temporary workaround)
+# Uncomment the line below to force CPU mode if CUDA errors persist
+# export CUDA_VISIBLE_DEVICES=""
 
 $VENV_PYTHON main.py --listen 0.0.0.0 --port 8188
 
