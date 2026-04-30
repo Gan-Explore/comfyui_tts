@@ -117,6 +117,7 @@ fuser -k 8188/tcp 2>/dev/null || true
 # Start ComfyUI with correct bindings
 # python main.py --listen 0.0.0.0 --port 8188
 # Ensure we're using the virtual environment python
-/opt/comfy_env/bin/python main.py --listen 0.0.0.0 --port 8188
+nohup /opt/comfy_env/bin/python main.py --listen 0.0.0.0 --port 8188 &> /workspace/runpod-slim/comfyui.log &
 
-sleep infinity
+# Tail the log file
+tail -f /workspace/runpod-slim/comfyui.log
